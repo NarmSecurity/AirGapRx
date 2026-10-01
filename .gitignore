@@ -1,0 +1,22 @@
+# Gradle / Android Studio
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Knowledge base: never commit the signing key or downloaded third-party data
+kb/keys/
+kb/sources/ddinter/*.csv
+kb/sources/rxnorm/
+
+# Model weights are imported on-device, not committed
+*.task
+*.tflite
+
+# Evaluation media (label photos may show personal details)
+docs/evaluation/photos/
