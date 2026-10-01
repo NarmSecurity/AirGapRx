@@ -1,0 +1,54 @@
+@startuml deployment
+skinparam shadowing false
+skinparam defaultFontName Arial
+title AirGap Rx - Deployment view (M2, links labelled with protocol)
+
+node "Developer workstation" as DEV {
+  artifact "app-release.apk" as APK
+  artifact "airgaprx-kb-<release>.zip\n(signed KB package)" as PKG
+  artifact "model .task\n(optional)" as MODEL
+}
+
+node "Android phone (Android 10+, 4 GB RAM)" <<device>> {
+  node "Linux kernel / hardware" {
+    component "Camera sensor" as CAM
+    component "GPU / NPU" as GPU
+    component "Keystore TEE / StrongBox" as TEE
+  }
+  node "Android framework" {
+    component "CameraX / Camera2 service" as C2
+    component "Android Keystore\n(keystore2 daemon)" as KS
+    component "Storage Access Framework\n(DocumentsProvider)" as SAF
+    component "PackageManager" as PM
+  }
+  node "App sandbox: com.airgaprx.app\n(no INTERNET permission)" as APP {
+    component "AirGap Rx process" as PROC
+    database "kb/current/kb.sqlite\n(read-only, signed)" as KBDB
+    database "shelf.db\n(SQLCipher AES-256)" as SHELF
+    artifact "ML Kit model\n(bundled in APK)" as OCRM
+    artifact "models/*.task" as LLMF
+  }
+}
+
+APK ..> PM : USB - adb install (ADB protocol)\nor file copy (MTP)
+PKG ..> SAF : USB - MTP file copy
+MODEL ..> SAF : USB - MTP file copy
+
+CAM -- C2 : MIPI CSI-2
+C2 -- PROC : Binder IPC + shared\ngraphics buffers
+SAF -- PROC : Binder IPC\n(content:// stream)
+KS -- PROC : Binder IPC
+TEE -- KS : Keymint HAL
+PM -- PROC : Binder IPC (getPackageInfo)
+PROC -- GPU : OpenCL / GPU delegate\n(in-process driver)
+PROC -- KBDB : SQLite file I/O (POSIX)
+PROC -- SHELF : SQLCipher file I/O (POSIX)
+PROC -- OCRM : JNI (in-process)
+PROC -- LLMF : mmap via JNI
+
+note bottom of APP
+  No network node exists: no server, no inference endpoint,
+  no telemetry sink. Zero egress follows from the topology (R1)
+  and is verified by packet capture during a full session.
+end note
+@enduml

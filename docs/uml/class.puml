@@ -1,0 +1,209 @@
+@startuml class
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty members
+title AirGap Rx - Class view (M2, as implemented)
+
+package "View (app/ui)" {
+  class CaptureScreen <<Composable>>
+  class ReviewScreen <<Composable>>
+  class ResultsScreen <<Composable>>
+}
+
+package "ViewModel (app/ui)" {
+  class CaptureViewModel {
+    - state : StateFlow<CaptureState>
+    + onImage(image: InputImage, release: () -> Unit)
+    + reset()
+  }
+  class ReviewViewModel {
+    - ui : StateFlow<ReviewUi>
+    + choose(id: Int, c: Candidate)
+    + noneOfThese(id: Int)
+    + keepUnchecked(id: Int)
+    + save()
+  }
+  class InteractionViewModel {
+    - ui : StateFlow<ResultsUi>
+    + acknowledge()
+  }
+  interface CaptureState <<sealed>> {
+    Ready | Processing | Retake | Recognised | Error
+  }
+}
+
+package "Domain (core)" {
+  class RecognitionPipeline {
+    - policy : CapturePolicy
+    + process(ocr: OcrResult) : RecognitionOutcome
+  }
+  interface LabelParser {
+    + parse(ocr: OcrResult) : List<Mention>
+  }
+  class LexiconLabelParser
+  class HybridLabelParser {
+    - primary : LabelParser
+    - secondary : LabelParser?
+  }
+  class IngredientNormaliser {
+    - policy : NormalisationPolicy
+    + normalise(m: Mention) : RecognisedItem
+    + normaliseAll(ms: List<Mention>) : List<RecognisedItem>
+  }
+  class Lexicon {
+    - trigramIndex : Map<String, IntArray>
+    + lookup(text: String) : List<Candidate>
+  }
+  class InteractionEngine {
+    + evaluate(entries: List<ShelfEntry>) : List<Alert>
+  }
+  class SeverityRanker {
+    - policy : RankingPolicy
+    + rank(alerts: List<Alert>) : List<Alert>
+  }
+  class ExplanationGenerator {
+    + explain(a: Alert, v: KbVersion) : Explanation
+  }
+  interface KnowledgeBase {
+    + version : KbVersion
+    + ingredient(id: String) : Ingredient?
+    + terms() : List<LexiconTerm>
+    + interactionsBetween(a: String, b: String) : List<Interaction>
+  }
+  class KbVerifier {
+    + verify(dir: File) : KbCheck
+  }
+  class KbInstaller {
+    + install(zip: InputStream) : InstallResult
+    + current() : KbCheck
+  }
+}
+
+package "Model (core)" {
+  class OcrResult {
+    + lines : List<TextLine>
+    + meanConfidence : Float?
+  }
+  class Mention {
+    + text : String
+    + source : MentionSource
+  }
+  class RecognisedItem {
+    + mention : Mention
+    + resolution : Resolution
+  }
+  interface Resolution <<sealed>> {
+    Resolved | Ambiguous | Unrecognised
+  }
+  class Candidate {
+    + score : Double
+    + matchedTerm : String
+  }
+  class Ingredient {
+    + id : String
+    + name : String
+    + kind : IngredientKind
+    + rxcui : String?
+  }
+  enum IngredientKind {
+    PRESCRIPTION
+    OTC
+    SUPPLEMENT
+    HERBAL
+    FOOD
+  }
+  class Interaction {
+    + severity : Severity
+    + mechanism : String?
+    + management : String?
+    + source : String
+    + sourceRef : String?
+  }
+  class Alert {
+    + type : AlertType
+    + severity : Severity
+    + interruptive : Boolean
+  }
+  enum Severity {
+    MAJOR
+    MODERATE
+    MINOR
+    UNKNOWN
+  }
+  class ShelfEntry {
+    + entryId : Long
+    + productName : String?
+  }
+  class KbVersion {
+    + releaseId : String
+    + compiledAt : String
+    + dbSha256 : String
+  }
+}
+
+package "Data / Platform (app)" {
+  class SqliteKnowledgeBase
+  class KnowledgeBaseRepository {
+    + state : StateFlow<KbState>
+    + load() : KbState
+    + installFromUri(uri: Uri) : InstallResult
+  }
+  class MedicationRepository {
+    + items : StateFlow<List<ShelfItem>>
+    + add(ingredientId: String?, name: String, product: String?)
+    + checkable(kb: KnowledgeBase) : List<ShelfEntry>
+  }
+  class MlKitOcrService {
+    + recognise(image: InputImage) : OcrResult
+  }
+  class MediaPipeLlmParser
+  class EgressGuard <<object>> {
+    + check(ctx: Context) : Status
+  }
+}
+
+CaptureScreen ..> CaptureViewModel : observes
+ReviewScreen ..> ReviewViewModel : observes
+ResultsScreen ..> InteractionViewModel : observes
+CaptureViewModel --> CaptureState
+CaptureViewModel --> MlKitOcrService
+CaptureViewModel --> RecognitionPipeline
+ReviewViewModel --> MedicationRepository
+InteractionViewModel --> InteractionEngine
+InteractionViewModel --> SeverityRanker
+InteractionViewModel --> MedicationRepository
+
+RecognitionPipeline --> LabelParser
+RecognitionPipeline --> IngredientNormaliser
+LabelParser <|.. LexiconLabelParser
+LabelParser <|.. HybridLabelParser
+LabelParser <|.. MediaPipeLlmParser
+HybridLabelParser o-- "1..2" LabelParser
+LexiconLabelParser --> Lexicon
+IngredientNormaliser --> Lexicon
+Lexicon --> KnowledgeBase
+InteractionEngine --> KnowledgeBase
+KnowledgeBase <|.. SqliteKnowledgeBase
+KnowledgeBaseRepository --> KbInstaller
+KbInstaller --> KbVerifier
+KnowledgeBaseRepository --> "0..1" SqliteKnowledgeBase : opens verified
+
+MlKitOcrService ..> OcrResult : creates
+LabelParser ..> Mention : creates
+IngredientNormaliser ..> RecognisedItem : creates
+RecognisedItem *-- "1" Mention
+RecognisedItem *-- "1" Resolution
+Resolution o-- "0..*" Candidate
+Candidate --> "1" Ingredient
+Ingredient --> IngredientKind
+ShelfEntry --> "1" Ingredient
+InteractionEngine ..> Alert : creates
+Alert --> "2" Ingredient : first, second
+Alert o-- "0..*" Interaction : evidence
+Alert --> Severity
+Interaction --> Severity
+KnowledgeBase --> KbVersion
+ExplanationGenerator ..> Alert
+@enduml

@@ -1,0 +1,84 @@
+@startuml sequence
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequenceMessageAlign center
+autoactivate off
+title AirGap Rx - Scan, review and check (M2, with activation bars)
+
+actor User
+participant "CaptureScreen" as CS
+participant "CaptureViewModel" as CVM
+participant "MlKitOcrService" as OCR
+participant "RecognitionPipeline" as RP
+participant "LabelParser" as LP
+participant "IngredientNormaliser" as IN
+participant "ReviewViewModel" as RVM
+participant "MedicationRepository" as MR
+participant "InteractionViewModel" as IVM
+participant "InteractionEngine" as IE
+participant "SeverityRanker" as SR
+
+User -> CS : tap shutter
+activate CS
+CS -> CVM : onImage(frame)
+activate CVM
+CVM -> OCR : recognise(frame)
+activate OCR
+OCR --> CVM : OcrResult(lines, confidence)
+deactivate OCR
+CVM -> RP : process(ocr)
+activate RP
+alt confidence < 0.60 or no text   (R2)
+  RP --> CVM : NeedsRecapture(reason)
+  CVM --> CS : state = Retake
+  CS --> User : "Let's try that again"
+else readable
+  RP -> LP : parse(ocr)
+  activate LP
+  LP --> RP : mentions
+  deactivate LP
+  RP -> IN : normaliseAll(mentions)
+  activate IN
+  IN --> RP : items (Resolved / Ambiguous / Unrecognised)
+  deactivate IN
+  RP --> CVM : Recognised(items, timings)
+  CVM --> CS : state = Recognised
+end
+deactivate RP
+deactivate CVM
+deactivate CS
+
+User -> RVM : open Review
+activate RVM
+opt any item Ambiguous or Unrecognised   (R3: pipeline suspended)
+  RVM --> User : "Which of these is it?" / "Keep or remove?"
+  User -> RVM : choose(option) / keepUnchecked() / remove()
+end
+User -> RVM : save()
+RVM -> MR : add(ingredient, product)
+activate MR
+MR --> RVM : saved (SQLCipher)
+deactivate MR
+deactivate RVM
+
+User -> IVM : Check interactions
+activate IVM
+IVM -> MR : checkable(kb)
+activate MR
+MR --> IVM : shelf entries
+deactivate MR
+IVM -> IE : evaluate(entries)
+activate IE
+IE --> IVM : alerts (pairwise + duplicates)
+deactivate IE
+IVM -> SR : rank(alerts)
+activate SR
+SR --> IVM : ranked alerts, interruptive flags
+deactivate SR
+alt any Major alert   (R5)
+  IVM --> User : interruptive dialog, must acknowledge
+  User -> IVM : acknowledge()
+end
+IVM --> User : ranked results (or explicit "no interactions found")
+deactivate IVM
+@enduml

@@ -1,0 +1,52 @@
+@startuml component
+skinparam componentStyle uml2
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 50
+title AirGap Rx - Component view (M2, provided/required interfaces)
+
+node "Android device - single app process, no network interface" {
+  component "Presentation\n(Compose screens)" as UI
+  component "Application\n(ViewModels)" as APP
+  component "Recognition\nPipeline" as RP
+  component "Reasoning\nSubsystem" as RS
+  component "Profile\nStore" as PS
+  component "Knowledge\nBase" as KB
+  component "Platform\nServices" as PL
+
+  APP -up- UiState
+  UI -down-( UiState
+  RP -up- RecognitionService
+  APP -down-( RecognitionService
+  RS -up- InteractionCheck
+  APP -down-( InteractionCheck
+  PS -up- ShelfStore
+  APP -down-( ShelfStore
+  KB -up- KbAdmin
+  APP -down-( KbAdmin
+
+  KB -up- Vocabulary
+  RP -down-( Vocabulary
+  KB -up- InteractionLookup
+  RS -down-( InteractionLookup
+
+  PL -up- OcrPort
+  RP -down-( OcrPort
+  PL -up- LlmPort
+  RP -down-( LlmPort
+  PL -up- KeyProvider
+  PS -down-( KeyProvider
+}
+
+note right of KB
+  Single access path to interaction data:
+  signature + SHA-256 verified
+  before any read (R4).
+end note
+note right of PL
+  CameraX, ML Kit OCR, MediaPipe LLM,
+  Android Keystore, EgressGuard (R1).
+end note
+@enduml
