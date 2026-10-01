@@ -1,0 +1,49 @@
+input,expected
+Panadol,paracetamol
+PANADOL 500mg,paracetamol
+acetaminophen,paracetamol
+Paracetemol,paracetamol
+Marevan,warfarin
+warfarn,warfarin
+Coumadin 5 mg,warfarin
+Eltroxin,levothyroxine
+Levothyroxine sodium 100 microgram,levothyroxine
+thyroxin,levothyroxine
+Zoloft,sertraline
+Sertraline hydrochloride,sertraline
+Ciproxin,ciprofloxacin
+Ciprofloxacn,ciprofloxacin
+Aspirin,acetylsalicylic acid
+Cartia,acetylsalicylic acid
+Nurofen,ibuprofen
+Lipitor,atorvastatin
+Zocor,simvastatin
+Calcium carbonate 1250 mg,calcium
+Ferrous fumarate,iron
+Ferrous sulphate,iron
+Magnesium citrate,magnesium
+Zinc gluconate,zinc
+Potassium chloride,potassium
+Cholecalciferol,vitamin d
+Vitamin D3,vitamin d
+Fish oil,omega-3 fish oil
+Omega-3,omega-3 fish oil
+Hypericum perforatum,st johns wort
+St. John's Wort,st johns wort
+St Johns Wart,st johns wort
+Ginkgo biloba,ginkgo
+Valeriana officinalis,valerian
+Piper methysticum,kava
+Liquorice root,licorice
+Curcumin,turmeric
+Red yeast rice,red yeast rice
+Melatonin 2mg,melatonin
+5-HTP,5-htp
+Ashwagandha,UNMAPPED
+Rhodiola rosea,UNMAPPED
+Glucosamine,UNMAPPED
+Coenzyme Q10,UNMAPPED
+Echinacea,UNMAPPED
+Milk thistle,UNMAPPED
+Saw palmetto,UNMAPPED
+Probiotic blend,UNMAPPED
