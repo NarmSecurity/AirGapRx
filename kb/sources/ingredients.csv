@@ -1,0 +1,46 @@
+name,kind,display
+warfarin,PRESCRIPTION,Warfarin
+sertraline,PRESCRIPTION,Sertraline
+fluoxetine,PRESCRIPTION,Fluoxetine
+escitalopram,PRESCRIPTION,Escitalopram
+citalopram,PRESCRIPTION,Citalopram
+fluvoxamine,PRESCRIPTION,Fluvoxamine
+tramadol,PRESCRIPTION,Tramadol
+ethinylestradiol,PRESCRIPTION,Ethinylestradiol
+ciclosporin,PRESCRIPTION,Ciclosporin
+digoxin,PRESCRIPTION,Digoxin
+simvastatin,PRESCRIPTION,Simvastatin
+atorvastatin,PRESCRIPTION,Atorvastatin
+levothyroxine,PRESCRIPTION,Levothyroxine
+ciprofloxacin,PRESCRIPTION,Ciprofloxacin
+doxycycline,PRESCRIPTION,Doxycycline
+clarithromycin,PRESCRIPTION,Clarithromycin
+spironolactone,PRESCRIPTION,Spironolactone
+lisinopril,PRESCRIPTION,Lisinopril
+cilazapril,PRESCRIPTION,Cilazapril
+alprazolam,PRESCRIPTION,Alprazolam
+zopiclone,PRESCRIPTION,Zopiclone
+metformin,PRESCRIPTION,Metformin
+acetylsalicylic acid,OTC,Acetylsalicylic acid
+paracetamol,OTC,Paracetamol
+ibuprofen,OTC,Ibuprofen
+calcium,SUPPLEMENT,Calcium
+iron,SUPPLEMENT,Iron
+magnesium,SUPPLEMENT,Magnesium
+zinc,SUPPLEMENT,Zinc
+potassium,SUPPLEMENT,Potassium
+vitamin k,SUPPLEMENT,Vitamin K
+vitamin d,SUPPLEMENT,Vitamin D
+omega-3 fish oil,SUPPLEMENT,Omega-3 fish oil
+melatonin,SUPPLEMENT,Melatonin
+5-htp,SUPPLEMENT,5-HTP
+st johns wort,HERBAL,St John's wort
+ginkgo,HERBAL,Ginkgo
+garlic,HERBAL,Garlic
+american ginseng,HERBAL,American ginseng
+kava,HERBAL,Kava
+valerian,HERBAL,Valerian
+red yeast rice,HERBAL,Red yeast rice
+licorice,HERBAL,Licorice
+turmeric,HERBAL,Turmeric
+grapefruit,FOOD,Grapefruit

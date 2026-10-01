@@ -1,0 +1,38 @@
+ingredient_a,ingredient_b,severity,mechanism,management,evidence_ref,reviewed
+st johns wort,warfarin,Major,"Induces CYP2C9, CYP3A4 and P-glycoprotein, lowering warfarin levels and anticoagulant effect.","Avoid the combination. If already taking both, do not stop St John's wort without INR monitoring by your prescriber.",Henderson2002,no
+st johns wort,sertraline,Major,"Additive serotonergic effect; risk of serotonin toxicity.","Avoid the combination.",Izzo2009,no
+st johns wort,fluoxetine,Major,"Additive serotonergic effect; risk of serotonin toxicity.","Avoid the combination.",Izzo2009,no
+st johns wort,escitalopram,Major,"Additive serotonergic effect; risk of serotonin toxicity.","Avoid the combination.",Izzo2009,no
+st johns wort,citalopram,Major,"Additive serotonergic effect; risk of serotonin toxicity.","Avoid the combination.",Izzo2009,no
+st johns wort,ethinylestradiol,Major,"CYP3A4 induction lowers contraceptive hormone levels; breakthrough bleeding and contraceptive failure reported.","Use an additional or alternative contraceptive method; talk to your pharmacist.",Henderson2002,no
+st johns wort,ciclosporin,Major,"CYP3A4 and P-glycoprotein induction lowers ciclosporin levels; transplant rejection reported.","Avoid the combination.",Henderson2002,no
+st johns wort,digoxin,Moderate,"P-glycoprotein induction lowers digoxin levels.","Avoid starting or stopping St John's wort without advice; levels may need monitoring.",Henderson2002,no
+ginkgo,warfarin,Moderate,"Possible additive bleeding risk from antiplatelet activity.","Watch for unusual bruising or bleeding and tell your prescriber.",Izzo2009,no
+ginkgo,acetylsalicylic acid,Moderate,"Possible additive antiplatelet effect and bleeding risk.","Watch for unusual bruising or bleeding and tell your prescriber.",Izzo2009,no
+garlic,warfarin,Moderate,"Concentrated garlic supplements may have antiplatelet activity; possible increased bleeding risk.","Tell your prescriber; avoid high-dose garlic supplements around surgery.",Izzo2009,no
+american ginseng,warfarin,Moderate,"Reduced INR and warfarin effect observed in a randomised controlled trial.","Tell your prescriber before starting or stopping ginseng; INR may need checking.",Yuan2004,no
+omega-3 fish oil,warfarin,Minor,"High doses may have a mild antiplatelet effect.","Usually acceptable at usual doses; tell your prescriber you take it.",REVIEW,no
+grapefruit,simvastatin,Major,"Furanocoumarins inhibit intestinal CYP3A4, greatly increasing simvastatin exposure; risk of myopathy and rhabdomyolysis.","Avoid grapefruit and grapefruit juice.",Bailey2013,no
+grapefruit,atorvastatin,Moderate,"Inhibition of intestinal CYP3A4 increases atorvastatin exposure.","Avoid large amounts of grapefruit juice.",Bailey2013,no
+calcium,levothyroxine,Moderate,"Calcium binds levothyroxine in the gut and reduces its absorption.","Take levothyroxine at least 4 hours apart from calcium.",Singh2000,no
+iron,levothyroxine,Moderate,"Iron forms complexes with levothyroxine and reduces its absorption.","Take levothyroxine at least 4 hours apart from iron.",Campbell1991,no
+calcium,ciprofloxacin,Moderate,"Chelation with calcium reduces ciprofloxacin absorption.","Take ciprofloxacin at least 2 hours before or 6 hours after calcium.",Medsafe-DS,no
+magnesium,ciprofloxacin,Moderate,"Chelation with magnesium reduces ciprofloxacin absorption.","Take ciprofloxacin at least 2 hours before or 6 hours after magnesium.",Medsafe-DS,no
+zinc,ciprofloxacin,Moderate,"Chelation with zinc reduces ciprofloxacin absorption.","Take ciprofloxacin at least 2 hours before or 6 hours after zinc.",Medsafe-DS,no
+iron,ciprofloxacin,Moderate,"Chelation with iron reduces ciprofloxacin absorption.","Take ciprofloxacin at least 2 hours before or 6 hours after iron.",Campbell1991,no
+calcium,doxycycline,Moderate,"Chelation with calcium reduces doxycycline absorption.","Separate doses by at least 2 to 3 hours.",Medsafe-DS,no
+iron,doxycycline,Moderate,"Chelation with iron reduces doxycycline absorption.","Separate doses by at least 2 to 3 hours.",Campbell1991,no
+magnesium,doxycycline,Moderate,"Chelation with magnesium reduces doxycycline absorption.","Separate doses by at least 2 to 3 hours.",Medsafe-DS,no
+vitamin k,warfarin,Moderate,"Vitamin K directly opposes warfarin's mechanism; changes in intake shift the INR.","Keep vitamin K intake consistent and tell your prescriber before starting or stopping a supplement.",Medsafe-DS,no
+potassium,spironolactone,Major,"Additive potassium retention; risk of hyperkalaemia.","Avoid potassium supplements unless prescribed and monitored.",Medsafe-DS,no
+potassium,lisinopril,Moderate,"ACE inhibitors reduce potassium excretion; supplements add to hyperkalaemia risk.","Avoid potassium supplements unless prescribed and monitored.",Medsafe-DS,no
+potassium,cilazapril,Moderate,"ACE inhibitors reduce potassium excretion; supplements add to hyperkalaemia risk.","Avoid potassium supplements unless prescribed and monitored.",Medsafe-DS,no
+kava,alprazolam,Moderate,"Additive central nervous system depression.","Avoid the combination; do not drive if drowsy.",Izzo2009,no
+valerian,zopiclone,Moderate,"Additive sedation.","Avoid the combination; do not drive if drowsy.",REVIEW,no
+melatonin,fluvoxamine,Moderate,"Fluvoxamine inhibits CYP1A2 and markedly increases melatonin exposure.","Talk to your prescriber; a lower melatonin dose or avoidance may be advised.",Hartter2000,no
+5-htp,sertraline,Major,"Additive serotonergic effect; risk of serotonin toxicity.","Avoid the combination.",Medsafe-DS,no
+5-htp,fluoxetine,Major,"Additive serotonergic effect; risk of serotonin toxicity.","Avoid the combination.",Medsafe-DS,no
+red yeast rice,simvastatin,Moderate,"Red yeast rice contains monacolin K, which is chemically identical to lovastatin: additive statin exposure and myopathy risk.","Do not combine with a prescribed statin.",NCCIH-RYR,no
+red yeast rice,atorvastatin,Moderate,"Red yeast rice contains monacolin K, which is chemically identical to lovastatin: additive statin exposure and myopathy risk.","Do not combine with a prescribed statin.",NCCIH-RYR,no
+licorice,digoxin,Moderate,"Glycyrrhizin can cause potassium loss, which increases the risk of digoxin toxicity.","Avoid regular liquorice or licorice-root supplements.",REVIEW,no
+turmeric,warfarin,Moderate,"Case reports of raised INR with concentrated turmeric/curcumin supplements.","Tell your prescriber; INR may need checking.",REVIEW,no
