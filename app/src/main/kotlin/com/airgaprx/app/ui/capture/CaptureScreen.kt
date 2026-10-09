@@ -183,6 +183,6 @@ private fun retakeMessage(reason: RecaptureReason, confidence: Float?): String =
     RecaptureReason.NO_TEXT -> "No text was found. Move closer so the ingredients panel fills the frame."
     RecaptureReason.LOW_CONFIDENCE ->
         "The text was hard to read (confidence ${"%.0f".format((confidence ?: 0f) * 100)}%). " +
-            "Check focus, avoid glare and hold the label flat. Nothing was guessed."
+            "Check focus, avoid glare and hold the label flat. Nothing from this photo was added."
     RecaptureReason.NO_INGREDIENTS -> "No ingredients were found on this side of the pack. Try the side with the ingredients list."
 }

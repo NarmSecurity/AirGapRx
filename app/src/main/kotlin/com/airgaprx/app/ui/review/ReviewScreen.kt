@@ -52,6 +52,7 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
     val vm = appViewModel { ReviewViewModel(it) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     var searching by remember { mutableStateOf(false) }
+    var replacing by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(ui.saved) { if (ui.saved) onSaved() }
 
     Scaffold(
@@ -83,7 +84,7 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     supportingText = { Text("Helps spot the same ingredient in two products.") },
                 )
             }
-            items(ui.rows.filter { it.state != RowState.Removed }, key = { it.id }) { row -> RowCard(row, vm) }
+            items(ui.rows.filter { it.state != RowState.Removed }, key = { it.id }) { row -> RowCard(row, vm, onChange = { replacing = row.id }) }
             item {
                 TextButton(onClick = { searching = true }) {
                     Icon(Icons.Outlined.Search, null); Text("Add a missing ingredient")
@@ -92,11 +93,12 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
         }
     }
 
-    if (searching) SearchDialog(vm, onDismiss = { searching = false })
+    if (searching) SearchDialog(vm, onPick = vm::addManual, onDismiss = { searching = false })
+    replacing?.let { id -> SearchDialog(vm, onPick = { vm.replace(id, it) }, onDismiss = { replacing = null }) }
 }
 
 @Composable
-private fun RowCard(row: ReviewRow, vm: ReviewViewModel) {
+private fun RowCard(row: ReviewRow, vm: ReviewViewModel, onChange: () -> Unit) {
     val pendingColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
     Card(Modifier.fillMaxWidth(), colors = if (row.pending) pendingColors else CardDefaults.cardColors()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -110,7 +112,13 @@ private fun RowCard(row: ReviewRow, vm: ReviewViewModel) {
                     Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
                         Text(s.ingredient.name, style = MaterialTheme.typography.titleMedium)
                         KindChip(s.ingredient.kind)
+                        // Fuzzy (non-exact) and model-proposed matches are accepted provisionally; say so.
+                        if (s.score < 1.0 || row.mention.source == MentionSource.LLM) Text(
+                            "Matched approximately. Check this is right.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
+                        )
                     }
+                    TextButton(onClick = onChange) { Text("Change") }
                     IconButton(onClick = { vm.remove(row.id) }) { Icon(Icons.Outlined.Close, "Remove ${s.ingredient.name}") }
                 }
                 is RowState.Choose -> {
@@ -147,7 +155,7 @@ private fun RowCard(row: ReviewRow, vm: ReviewViewModel) {
 }
 
 @Composable
-private fun SearchDialog(vm: ReviewViewModel, onDismiss: () -> Unit) {
+private fun SearchDialog(vm: ReviewViewModel, onPick: (com.airgaprx.core.model.Ingredient) -> Unit, onDismiss: () -> Unit) {
     var query by remember { mutableStateOf("") }
     val results = remember(query) { vm.search(query) }
     AlertDialog(
@@ -157,7 +165,7 @@ private fun SearchDialog(vm: ReviewViewModel, onDismiss: () -> Unit) {
             Column {
                 OutlinedTextField(query, { query = it }, singleLine = true, label = { Text("Name or brand") })
                 results.forEach { c ->
-                    TextButton(onClick = { vm.addManual(c.ingredient); onDismiss() }) { Text("${c.ingredient.name} · ${c.ingredient.kind.label}") }
+                    TextButton(onClick = { onPick(c.ingredient); onDismiss() }) { Text("${c.ingredient.name} · ${c.ingredient.kind.label}") }
                 }
             }
         },

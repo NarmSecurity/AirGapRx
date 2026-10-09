@@ -55,6 +55,9 @@ class ReviewViewModel(private val c: AppContainer) : ViewModel() {
     fun search(query: String): List<Candidate> =
         if (query.trim().length < 2) emptyList() else c.services()?.lexicon?.lookup(query, minScore = 0.6, limit = 6).orEmpty()
 
+    /** User correction of an accepted row (e.g. a fuzzy match that picked the wrong ingredient). */
+    fun replace(id: Int, ingredient: Ingredient) = set(id, RowState.Accepted(ingredient, 1.0))
+
     fun addManual(ingredient: Ingredient) = _ui.update { u ->
         val next = (u.rows.maxOfOrNull { it.id } ?: -1) + 1
         u.copy(rows = u.rows + ReviewRow(next, Mention(ingredient.name, MentionSource.MANUAL), RowState.Accepted(ingredient, 1.0)))
