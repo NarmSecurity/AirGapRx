@@ -64,56 +64,78 @@ class OcrEvaluationTest {
         testAssets.open(path).use { InputImage.fromBitmap(BitmapFactory.decodeStream(it), 0) }
 
     /**
-     * Criterion 2: character accuracy (1 - character error rate) per label, and end-to-end ingredient
-     * recall/precision per label (photo -> items on the Review screen), for each parser configuration.
+     * Criterion 2 and the parser comparison. Ground truth must be complete: every photo needs NAME.txt
+     * and NAME.ingredients.txt, otherwise the run fails rather than silently scoring a subset.
+     *
+     * Parser configuration comes from an instrumentation argument so each configuration runs in its own
+     * fresh process (cold start, separate memory peak):
+     *   ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.parser=deterministic
+     *   ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.parser=llm
+     *
+     * Per-label columns:
+     *  - found_auto: expected actives resolved automatically on the Review list;
+     *  - correct_option_offered: expected actives present only as an option of an ambiguous item. This
+     *    is candidate retrieval; whether a person picks it is measured in the usability study, not here;
+     *  - expected_not_in_kb: expected actives that are not in the KB vocabulary. They stay in the
+     *    denominator (coverage gaps), so recall is never inflated by dropping them;
+     *  - run_index 1 is the cold run (includes model load for the llm configuration);
+     *  - peak_rss_kb is per label when peak_scope=per_operation.
      */
     @Test
     fun recognitionAccuracyAndParserComparison(): Unit = runBlocking {
         val s = services()
         val names = images("labels", minimum = 60)
-        val parsers = buildMap<String, LabelParser> {
-            put("deterministic", HybridLabelParser(LexiconLabelParser(s.lexicon), null))
-            app.container.llmParser()?.let { put("deterministic+llm", HybridLabelParser(LexiconLabelParser(s.lexicon), it)) }
+        val config = InstrumentationRegistry.getArguments().getString("parser") ?: "deterministic"
+        val parser: LabelParser = when (config) {
+            "deterministic" -> HybridLabelParser(LexiconLabelParser(s.lexicon), null)
+            "llm" -> HybridLabelParser(
+                LexiconLabelParser(s.lexicon),
+                app.container.llmParser() ?: throw AssertionError("parser=llm but no .task model is imported in the app"),
+            )
+            else -> throw AssertionError("Unknown parser configuration '$config' (use deterministic or llm)")
         }
-        if (parsers.size == 1) Log.w(TAG, "No language model imported: only the deterministic parser is evaluated")
+
+        val missing = names.flatMap { n ->
+            val base = "eval/labels/" + n.substringBeforeLast('.')
+            listOfNotNull(
+                "$base.txt".takeIf { asset(it) == null },
+                "$base.ingredients.txt".takeIf { asset(it) == null },
+            )
+        }
+        assertTrue("Incomplete ground truth, add these files: ${missing.joinToString()}", missing.isEmpty())
 
         val csv = StringBuilder(
-            "device,image,parser,truth_chars,char_accuracy,ocr_confidence,outcome,expected,found,found_after_confirmation," +
-                "missed,extra,llm_mentions,ocr_ms,parse_ms,normalise_ms,peak_rss_kb\n"
+            "device,parser,run_index,image,truth_chars,char_accuracy,ocr_confidence,outcome,expected,found_auto," +
+                "correct_option_offered,expected_not_in_kb,missed,extra,llm_mentions,ocr_ms,parse_ms,normalise_ms,peak_rss_kb,peak_scope\n"
         )
-        var transcribed = 0
-        for (name in names) {
+        names.forEachIndexed { i, name ->
             val base = "eval/labels/" + name.substringBeforeLast('.')
-            val truth = asset("$base.txt")
-            val expected = asset("$base.ingredients.txt")?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }
-                ?.mapNotNull { s.lexicon.lookup(it).firstOrNull()?.ingredient?.id }?.toSet()
-            val ocrTimings = LinkedHashMap<String, Long>()
-            val ocr = timed(ocrTimings, "ocr") { app.container.ocr.recognise(input("eval/labels/$name")) }
-            val charAccuracy = truth?.let {
-                transcribed++
-                val a = Text.normalise(it); val b = Text.normalise(ocr.fullText)
-                1.0 - Text.editDistance(a, b).toDouble() / maxOf(1, a.length)
-            }
-            for ((label, parser) in parsers) {
-                val t = LinkedHashMap(ocrTimings)
-                val outcome = RecognitionPipeline(parser, s.normaliser).process(ocr, t)
-                val items = (outcome as? RecognitionOutcome.Recognised)?.items.orEmpty()
-                val resolved = items.mapNotNull { (it.resolution as? Resolution.Resolved)?.candidate?.ingredient?.id }.toSet()
-                val options = items.flatMap { (it.resolution as? Resolution.Ambiguous)?.options.orEmpty().map { o -> o.ingredient.id } }.toSet()
-                val exp = expected.orEmpty()
-                csv.append(listOf(
-                    device, name, label, truth?.length ?: "", charAccuracy?.let { "%.4f".format(it) } ?: "",
-                    ocr.meanConfidence ?: "", outcome::class.simpleName,
-                    exp.size, (exp intersect resolved).size, (exp intersect (resolved + options)).size,
-                    (exp - resolved - options).joinToString("|"), (resolved - exp).joinToString("|"),
-                    items.count { it.mention.source == MentionSource.LLM },
-                    t["ocr"] ?: "", t["parse"] ?: "", t["normalise"] ?: "", PerfLog.peakRssKb(),
-                ).joinToString(",")).append('\n')
-            }
+            val truth = asset("$base.txt")!!
+            val expectedNames = asset("$base.ingredients.txt")!!.lines().map { it.trim() }.filter { it.isNotEmpty() }
+            val expectedIds = expectedNames.associateWith { n -> s.lexicon.exactMatches(Text.normalise(n)).singleOrNull()?.ingredient?.id }
+            val notInKb = expectedIds.filterValues { it == null }.keys
+            val exp = expectedIds.values.filterNotNull().toSet()
+
+            val peakScope = if (PerfLog.resetPeak()) "per_operation" else "since_process_start"
+            val t = LinkedHashMap<String, Long>()
+            val ocr = timed(t, "ocr") { app.container.ocr.recognise(input("eval/labels/$name")) }
+            val a = Text.normalise(truth); val b = Text.normalise(ocr.fullText)
+            val charAccuracy = 1.0 - Text.editDistance(a, b).toDouble() / maxOf(1, a.length)
+            val outcome = RecognitionPipeline(parser, s.normaliser).process(ocr, t)
+            val items = (outcome as? RecognitionOutcome.Recognised)?.items.orEmpty()
+            val resolved = items.mapNotNull { (it.resolution as? Resolution.Resolved)?.candidate?.ingredient?.id }.toSet()
+            val options = items.flatMap { (it.resolution as? Resolution.Ambiguous)?.options.orEmpty().map { o -> o.ingredient.id } }.toSet()
+            csv.append(listOf(
+                device, config, i + 1, name, truth.length, "%.4f".format(charAccuracy), ocr.meanConfidence ?: "",
+                outcome::class.simpleName, expectedNames.size, (exp intersect resolved).size,
+                ((exp intersect options) - resolved).size, notInKb.size,
+                ((exp - resolved - options).toList() + notInKb).joinToString("|"), (resolved - exp).joinToString("|"),
+                items.count { it.mention.source == MentionSource.LLM },
+                t["ocr"] ?: "", t["parse"] ?: "", t["normalise"] ?: "", PerfLog.peakRssKb(), peakScope,
+            ).joinToString(",")).append('\n')
         }
-        assertTrue("No transcriptions (labels/NAME.txt) found; character accuracy was not measured", transcribed > 0)
-        File(outDir, "recognition.csv").writeText(csv.toString())
-        Log.i(TAG, "criterion 2 results ($device):\n$csv")
+        File(outDir, "recognition_$config.csv").writeText(csv.toString())
+        Log.i(TAG, "criterion 2 results ($device, parser=$config):\n$csv")
     }
 
     /** Criterion 3: every degraded capture must produce a re-capture prompt, never a silent commit. */

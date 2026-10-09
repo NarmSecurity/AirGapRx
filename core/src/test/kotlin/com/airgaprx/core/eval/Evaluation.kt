@@ -53,87 +53,113 @@ private fun requireCases(cases: File, target: Int, criterion: String): List<Map<
     return rows
 }
 
+/** Maps an expected canonical name to an ingredient by EXACT surface form only (never fuzzy). */
+private fun expectedId(lexicon: Lexicon, name: String): String? =
+    lexicon.exactMatches(com.airgaprx.core.normalise.Text.normalise(name)).singleOrNull()?.ingredient?.id
+
+/**
+ * Criterion 4. Verdicts:
+ *  - correct: resolved automatically to the expected ingredient;
+ *  - correct_option_offered: ambiguous, and the expected ingredient is among the options. This is a
+ *    candidate-retrieval measure; it does NOT show that a user would pick it (that needs the usability study);
+ *  - WRONG_silent_guess / missed: errors;
+ *  - expected UNMAPPED or not in the KB vocabulary: the system must escalate (anything resolved is a
+ *    silent guess). "Not in vocabulary" rows are reported as coverage gaps, not dropped.
+ */
 private fun normalisation(cases: File, normaliser: IngredientNormaliser, lexicon: Lexicon, out: File) {
     val rows = requireCases(cases, 100, "Criterion 4")
-    var autoCorrect = 0; var confirmCorrect = 0; var wrong = 0; var mappedTotal = 0
-    var unmappedTotal = 0; var unmappedEscalated = 0
-    val report = StringBuilder("input,expected,outcome,top_candidate,verdict\n")
+    var autoCorrect = 0; var offered = 0; var wrong = 0; var mappedTotal = 0
+    var unmappedTotal = 0; var unmappedEscalated = 0; var gaps = 0
+    val report = StringBuilder("input,expected,expected_in_kb,outcome,candidates,verdict\n")
     for (r in rows) {
         val input = r.getValue("input"); val expected = r.getValue("expected").trim()
         val res = normaliser.normalise(Mention(input, MentionSource.MANUAL)).resolution
-        val expectedId = if (expected.equals("UNMAPPED", true)) null else lexicon.lookup(expected).firstOrNull()?.ingredient?.id
+        val declaredUnmapped = expected.equals("UNMAPPED", true)
+        val expId = if (declaredUnmapped) null else expectedId(lexicon, expected)
+        if (!declaredUnmapped && expId == null) gaps++
         val (outcome, top) = when (res) {
             is Resolution.Resolved -> "resolved" to res.candidate.ingredient.id
             is Resolution.Ambiguous -> "ambiguous" to res.options.joinToString("|") { it.ingredient.id }
             Resolution.Unrecognised -> "unrecognised" to ""
         }
-        val verdict = if (expectedId == null) {
+        val verdict = if (expId == null) {
             unmappedTotal++
-            if (res !is Resolution.Resolved) { unmappedEscalated++; "escalated" } else "WRONG_silent_guess"
+            if (res !is Resolution.Resolved) { unmappedEscalated++; if (declaredUnmapped) "escalated" else "escalated_coverage_gap" }
+            else "WRONG_silent_guess"
         } else {
             mappedTotal++
             when {
-                res is Resolution.Resolved && res.candidate.ingredient.id == expectedId -> { autoCorrect++; "correct" }
-                res is Resolution.Ambiguous && res.options.any { it.ingredient.id == expectedId } -> { confirmCorrect++; "correct_after_confirmation" }
+                res is Resolution.Resolved && res.candidate.ingredient.id == expId -> { autoCorrect++; "correct" }
+                res is Resolution.Ambiguous && res.options.any { it.ingredient.id == expId } -> { offered++; "correct_option_offered" }
                 res is Resolution.Resolved -> { wrong++; "WRONG_silent_guess" }
                 else -> { wrong++; "missed" }
             }
         }
-        report.append(listOf(input, expected, outcome, top, verdict).joinToString(",") { Csv.quote(it) }).append('\n')
+        report.append(listOf(input, expected, (expId != null).toString(), outcome, top, verdict).joinToString(",") { Csv.quote(it) }).append('\n')
     }
     out.writeText(report.toString())
     println("\nCriterion 4: normalisation (${rows.size} cases)")
-    println("  mapped terms:   ${pct(autoCorrect, mappedTotal)} auto-correct, ${pct(autoCorrect + confirmCorrect, mappedTotal)} correct incl. confirmation, $wrong wrong/missed")
-    println("  unmapped terms: ${pct(unmappedEscalated, unmappedTotal)} escalated (pass requires 100%)")
+    println("  in-vocabulary terms: ${pct(autoCorrect, mappedTotal)} resolved correctly without asking; " +
+        "${pct(offered, mappedTotal)} more had the correct option offered (candidate retrieval, not user choice); $wrong wrong/missed")
+    println("  terms that must be escalated: ${pct(unmappedEscalated, unmappedTotal)} escalated (pass requires 100%)")
+    if (gaps > 0) println("  $gaps expected ingredient(s) are not in the KB vocabulary: reported as coverage gaps")
     println("  -> ${out.path}")
 }
 
 /**
- * Criterion 5, reported three ways so incomplete coverage cannot inflate the headline:
- *  - coverage: share of pairs whose two inputs both normalise to a KB ingredient;
- *  - covered-pair recall / false-positive rate: how well the engine does on what it covers;
- *  - end-to-end recall: over ALL interacting pairs, counting an uncovered pair as a miss
- *    (the user would get no alert). This is the number a user experiences.
- * Inputs go through the same IngredientNormaliser the app uses. An Ambiguous input is resolved
- * to its first option and counted separately as "needs user confirmation".
+ * Criterion 5. Headline numbers make no assumption about user choices:
+ *  - an input that normalises to Ambiguous counts as NOT resolved (the alert depends on a choice the
+ *    harness cannot observe);
+ *  - coverage: share of pairs whose two inputs both resolve automatically;
+ *  - covered-pair recall / false-positive rate;
+ *  - end-to-end recall over ALL interacting pairs (uncovered or ambiguous = missed).
+ * A secondary, clearly labelled line shows what happens IF the user picked the first suggestion.
  */
 private fun detection(cases: File, kb: InMemoryKnowledgeBase, normaliser: IngredientNormaliser, out: File) {
     val rows = requireCases(cases, 100, "Criterion 5")
     val engine = InteractionEngine(kb)
     var tp = 0; var fn = 0; var fp = 0; var tn = 0
-    var posTotal = 0; var negTotal = 0; var posUncovered = 0; var negUncovered = 0; var needsConfirm = 0
-    val report = StringBuilder("a,b,expected,a_resolved,b_resolved,covered,needs_confirmation,detected,severity,verdict\n")
-    fun resolve(text: String): Pair<com.airgaprx.core.model.Ingredient?, Boolean> =
+    var posTotal = 0; var negTotal = 0; var posUncovered = 0; var negUncovered = 0; var ambiguousPairs = 0
+    var tpIfFirst = 0; var fpIfFirst = 0
+    val report = StringBuilder("a,b,expected,a_resolved,b_resolved,status,detected,severity,verdict,detected_if_first_option\n")
+    fun resolve(text: String): Pair<com.airgaprx.core.model.Ingredient?, com.airgaprx.core.model.Ingredient?> =
         when (val r = normaliser.normalise(Mention(text, MentionSource.MANUAL)).resolution) {
-            is Resolution.Resolved -> r.candidate.ingredient to false
-            is Resolution.Ambiguous -> r.options.first().ingredient to true
-            Resolution.Unrecognised -> null to false
+            is Resolution.Resolved -> r.candidate.ingredient to r.candidate.ingredient
+            is Resolution.Ambiguous -> null to r.options.first().ingredient
+            Resolution.Unrecognised -> null to null
         }
+    fun alerts(a: com.airgaprx.core.model.Ingredient, b: com.airgaprx.core.model.Ingredient) =
+        engine.evaluate(listOf(ShelfEntry(1, a, null), ShelfEntry(2, b, null)))
     for (r in rows) {
         val expected = r.getValue("expected").trim().lowercase() in setOf("yes", "interacting", "1", "true")
         if (expected) posTotal++ else negTotal++
-        val (a, ca) = resolve(r.getValue("a")); val (b, cb) = resolve(r.getValue("b"))
-        val covered = a != null && b != null
-        val confirm = ca || cb
-        if (confirm) needsConfirm++
+        val (a, aFirst) = resolve(r.getValue("a")); val (b, bFirst) = resolve(r.getValue("b"))
+        val ambiguous = (a == null && aFirst != null) || (b == null && bFirst != null)
+        val status = when { a != null && b != null -> "covered"; ambiguous -> "needs_user_choice"; else -> "not_in_kb" }
+        if (ambiguous && status != "covered") ambiguousPairs++
+        val ifFirst = if (aFirst != null && bFirst != null) alerts(aFirst, bFirst).isNotEmpty() else false
+        if (ifFirst && expected) tpIfFirst++
+        if (ifFirst && !expected) fpIfFirst++
         var detected = false; var severity = ""
-        val verdict = if (!covered) {
-            if (expected) { posUncovered++; "FN_uncovered" } else { negUncovered++; "TN_uncovered" }
+        val verdict = if (status != "covered") {
+            if (expected) { posUncovered++; "FN_$status" } else { negUncovered++; "TN_$status" }
         } else {
-            val alerts = engine.evaluate(listOf(ShelfEntry(1, a!!, null), ShelfEntry(2, b!!, null)))
-            detected = alerts.isNotEmpty(); severity = alerts.firstOrNull()?.severity?.name ?: ""
+            val al = alerts(a!!, b!!)
+            detected = al.isNotEmpty(); severity = al.firstOrNull()?.severity?.name ?: ""
             when { expected && detected -> { tp++; "TP" }; expected -> { fn++; "FN" }; detected -> { fp++; "FP" }; else -> { tn++; "TN" } }
         }
         report.append(listOf(r.getValue("a"), r.getValue("b"), expected.toString(), a?.id ?: "", b?.id ?: "",
-            covered.toString(), confirm.toString(), detected.toString(), severity, verdict).joinToString(",") { Csv.quote(it) }).append('\n')
+            status, detected.toString(), severity, verdict, ifFirst.toString()).joinToString(",") { Csv.quote(it) }).append('\n')
     }
     out.writeText(report.toString())
     println("\nCriterion 5: detection (${posTotal} interacting, ${negTotal} non-interacting pairs)")
-    println("  coverage: interacting ${pct(posTotal - posUncovered, posTotal)}, non-interacting ${pct(negTotal - negUncovered, negTotal)}")
+    println("  coverage (both inputs resolved without a user choice): interacting ${pct(posTotal - posUncovered, posTotal)}, " +
+        "non-interacting ${pct(negTotal - negUncovered, negTotal)}; $ambiguousPairs pair(s) need a user choice")
     println("  covered pairs: recall ${pct(tp, tp + fn)}, false-positive rate ${pct(fp, fp + tn)}")
-    println("  END-TO-END recall (uncovered = missed): ${pct(tp, posTotal)} - M1 pass requires >= 95%")
+    println("  END-TO-END recall (uncovered or ambiguous = missed): ${pct(tp, posTotal)} - M1 pass requires >= 95%")
     println("  false-positive rate over all non-interacting pairs: ${pct(fp, negTotal)} - M1 pass requires <= 5%")
-    if (needsConfirm > 0) println("  $needsConfirm pair(s) needed user confirmation of an ambiguous input (first option assumed)")
+    println("  [assumption, not measured] if the user always picked the first suggestion: " +
+        "recall ${pct(tpIfFirst, posTotal)}, false positives ${pct(fpIfFirst, negTotal)}")
     println("  -> ${out.path}")
 }
 
