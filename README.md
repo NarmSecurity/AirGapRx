@@ -40,9 +40,10 @@ checkers send your full medicine list to a server, and they cover herbal and sup
 
 AirGap Rx moves the whole check onto the phone. The app **declares no network permission**, so Android
 does not let the app open a network connection itself, and you can confirm the permission list in the APK.
-That is a strong property but not the whole story: a library can still pass data to another app over
-Android IPC (for example, ML Kit to Google Play services), so the evaluation captures **all device traffic**
-during a full session rather than relying on the permission list alone. See
+That is a strong property but not a complete proof: in principle a library could hand data to another app
+over Android IPC (a developer has asked whether bundled ML Kit can do this via Google Play services; it has
+not been demonstrated). So the evaluation captures **all device traffic** during and after a full session
+rather than relying on the permission list alone. See
 [`docs/evaluation/egress_protocol.md`](docs/evaluation/egress_protocol.md).
 
 ## Features
@@ -144,7 +145,7 @@ never downloads anything itself.
 
 | Command | What it checks |
 |---|---|
-| `./gradlew :core:test` | 36 JVM unit tests: text normalisation, fuzzy matching, parser (incl. excipient filtering), normaliser escalation, ranking, duplicate detection, section-aware parsing, KB signature, checksum, downgrade, tamper and review-status rejection |
+| `./gradlew :core:test` | 39 JVM unit tests: text normalisation, fuzzy matching, parser (incl. excipient filtering), normaliser escalation, ranking, duplicate detection, section-aware parsing, KB signature, checksum, downgrade, tamper and review-status rejection |
 | `./gradlew :app:verifyNoNetworkPermissionRelease` | Fails if any network permission survives manifest merging (R1) |
 | `scripts/check_apk_permissions.sh <apk>` | Lists the APK's permissions with `aapt2` and fails on any network permission (R1) |
 | `python kb/build_kb.py && ./gradlew :core:evaluate` | Criteria 4 and 5: normalisation accuracy and detection recall against the compiled KB |
