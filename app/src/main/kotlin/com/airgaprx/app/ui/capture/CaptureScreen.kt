@@ -78,6 +78,7 @@ fun CaptureScreen(onBack: () -> Unit, onRecognised: () -> Unit, onManualAdd: () 
 
     // Gallery path: same pipeline, used for repeatable evaluation with a fixed photo set (criteria 2-5).
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) com.airgaprx.app.platform.PerfLog.begin()
         if (uri != null) runCatching { InputImage.fromFilePath(context, uri) }.getOrNull()?.let { vm.onImage(it, shutterAtNanos = null) {} }
     }
 
@@ -135,6 +136,7 @@ fun CaptureScreen(onBack: () -> Unit, onRecognised: () -> Unit, onManualAdd: () 
                 }
                 FilledIconButton(
                     onClick = {
+                        com.airgaprx.app.platform.PerfLog.begin() // resets the per-operation memory peak
                         val shutterAt = android.os.SystemClock.elapsedRealtimeNanos()
                         imageCapture.takePicture(ContextCompat.getMainExecutor(context), object : ImageCapture.OnImageCapturedCallback() {
                             override fun onCaptureSuccess(image: ImageProxy) {

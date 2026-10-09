@@ -40,6 +40,7 @@ class InteractionViewModel(private val c: AppContainer) : ViewModel() {
     private fun evaluate() = viewModelScope.launch {
         val services = c.services() ?: run { _ui.value = ResultsUi.Failed("Knowledge base not loaded"); return@launch }
         c.medicationRepository.refresh()
+        com.airgaprx.app.platform.PerfLog.begin()
         val t = LinkedHashMap<String, Long>()
         val (alerts, unchecked, checked) = withContext(Dispatchers.Default) {
             val entries = c.medicationRepository.checkable(services.kb)

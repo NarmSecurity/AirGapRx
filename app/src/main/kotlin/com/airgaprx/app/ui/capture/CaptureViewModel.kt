@@ -53,7 +53,7 @@ class CaptureViewModel(private val c: AppContainer) : ViewModel() {
                 PerfLog.record(
                     c.context,
                     source = if (shutterAtNanos != null) "camera" else "gallery",
-                    shutterToReviewMs = shutterAtNanos?.let { (SystemClock.elapsedRealtimeNanos() - it) / 1_000_000 },
+                    recognitionMs = shutterAtNanos?.let { (SystemClock.elapsedRealtimeNanos() - it) / 1_000_000 },
                     stages = outcome.timings.stages,
                     outcome = outcome::class.simpleName ?: "",
                 )
