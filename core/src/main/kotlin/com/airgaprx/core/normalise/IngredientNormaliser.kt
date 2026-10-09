@@ -43,8 +43,14 @@ class IngredientNormaliser(
     }
 
     /**
-     * Normalises every mention and removes duplicates: resolved items collapse by ingredient,
-     * unresolved items collapse by their normalised text.
+     * Normalises every mention and removes only *established* duplicates:
+     *  - resolved items collapse when they resolve to the same ingredient;
+     *  - unresolved items collapse only when their normalised text is identical.
+     *
+     * An ambiguous item is never dropped because one of its options matches an ingredient that
+     * is already resolved: "Vitamin E" next to a resolved "Vitamin K" may offer Vitamin K as a
+     * fuzzy option, but that does not make it the same ingredient. The user decides on the Review
+     * screen, and the shelf deduplicates on save.
      */
     fun normaliseAll(mentions: List<Mention>): List<RecognisedItem> {
         val seenIngredients = HashSet<String>()
@@ -54,13 +60,9 @@ class IngredientNormaliser(
             val item = normalise(m)
             when (val r = item.resolution) {
                 is Resolution.Resolved -> if (seenIngredients.add(r.candidate.ingredient.id)) out += item
-                else -> if (seenText.add(Text.normalise(m.text))) out += item
+                else -> if (seenText.add(Text.stripDoses(m.text).ifEmpty { Text.normalise(m.text) })) out += item
             }
         }
-        // An ambiguous item whose options include an already-resolved ingredient is redundant.
-        return out.filterNot { item ->
-            val r = item.resolution
-            r is Resolution.Ambiguous && r.options.any { it.ingredient.id in seenIngredients }
-        }
+        return out
     }
 }

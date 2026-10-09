@@ -77,4 +77,12 @@ class IngredientNormaliserTest {
         val items = normaliser.normaliseAll(listOf(m("Panadol"), m("paracetamol 500mg"), m("acetaminophen")))
         assertEquals(1, items.size)
     }
+
+    /** Review finding 1: an ambiguous item must not vanish because one option overlaps a resolved one. */
+    @Test fun ambiguousItemIsKeptEvenIfAnOptionIsAlreadyResolved() {
+        val items = normaliser.normaliseAll(listOf(m("Vitamin K"), m("Vitamin E")))
+        assertEquals(items.toString(), 2, items.size)
+        assertTrue(items[0].resolution is Resolution.Resolved)
+        assertTrue("Vitamin E must stay visible: ${items[1]}", items[1].resolution !is Resolution.Resolved)
+    }
 }

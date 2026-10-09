@@ -28,9 +28,10 @@ object Fixtures {
     val iron = ing("iron", "Iron", SUPPLEMENT)
     val simvastatin = ing("simvastatin", "Simvastatin", PRESCRIPTION)
     val fishOil = ing("omega-3-fish-oil", "Omega-3 fish oil", SUPPLEMENT)
+    val vitaminK = ing("vitamin-k", "Vitamin K", SUPPLEMENT)
 
     private val all = listOf(warfarin, aspirin, sjw, sertraline, ginkgo, calcium, levothyroxine, magnesium,
-        ciprofloxacin, paracetamol, iron, simvastatin, fishOil)
+        ciprofloxacin, paracetamol, iron, simvastatin, fishOil, vitaminK)
 
     private val synonyms = mapOf(
         aspirin to listOf("aspirin", "cartia"),
@@ -60,6 +61,7 @@ object Fixtures {
         x(levothyroxine, iron, Severity.MODERATE),
         x(warfarin, paracetamol, Severity.MINOR),
         x(warfarin, fishOil, Severity.UNKNOWN),
+        x(warfarin, vitaminK, Severity.MODERATE),
     )
 
     fun kb() = InMemoryKnowledgeBase(
