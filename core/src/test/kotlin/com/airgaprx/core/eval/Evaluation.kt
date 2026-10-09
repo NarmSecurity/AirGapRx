@@ -33,15 +33,28 @@ fun main(args: Array<String>) {
 
     val kb = loadKb(kbDir)
     val lexicon = Lexicon(kb)
-    println("Knowledge base: ${kb.ingredients().size} ingredients, ${kb.terms().size} terms")
+    val manifest = java.util.Properties().apply { File(kbDir, "kb.manifest.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) } }
+    println("Knowledge base ${manifest.getProperty("release_id", "?")}: ${kb.ingredients().size} ingredients, ${kb.terms().size} terms")
+    if (manifest.getProperty("data_status") != "release") {
+        println("!! DEVELOPMENT knowledge base (drug-drug source: ${manifest.getProperty("ddi_source", "?")}). " +
+            "These numbers test the software only and must not be reported as the M1 evaluation.")
+    }
 
-    normalisation(File(evalDir, "normalisation_cases.csv"), IngredientNormaliser(lexicon), lexicon, File(outDir, "normalisation_results.csv"))
-    detection(File(evalDir, "detection_pairs.csv"), kb, lexicon, File(outDir, "detection_results.csv"))
+    val normaliser = IngredientNormaliser(lexicon)
+    normalisation(File(evalDir, "normalisation_cases.csv"), normaliser, lexicon, File(outDir, "normalisation_results.csv"))
+    detection(File(evalDir, "detection_pairs.csv"), kb, normaliser, File(outDir, "detection_results.csv"))
+}
+
+private fun requireCases(cases: File, target: Int, criterion: String): List<Map<String, String>> {
+    require(cases.exists()) { "$criterion: case file ${cases.path} is missing" }
+    val rows = Csv.read(cases)
+    require(rows.isNotEmpty()) { "$criterion: ${cases.name} has no cases, nothing was evaluated" }
+    if (rows.size < target) println("!! $criterion: ${rows.size} cases, below the M1 target of $target")
+    return rows
 }
 
 private fun normalisation(cases: File, normaliser: IngredientNormaliser, lexicon: Lexicon, out: File) {
-    if (!cases.exists()) { println("skip: ${cases.name} not found"); return }
-    val rows = Csv.read(cases)
+    val rows = requireCases(cases, 100, "Criterion 4")
     var autoCorrect = 0; var confirmCorrect = 0; var wrong = 0; var mappedTotal = 0
     var unmappedTotal = 0; var unmappedEscalated = 0
     val report = StringBuilder("input,expected,outcome,top_candidate,verdict\n")
@@ -72,29 +85,56 @@ private fun normalisation(cases: File, normaliser: IngredientNormaliser, lexicon
     println("\nCriterion 4: normalisation (${rows.size} cases)")
     println("  mapped terms:   ${pct(autoCorrect, mappedTotal)} auto-correct, ${pct(autoCorrect + confirmCorrect, mappedTotal)} correct incl. confirmation, $wrong wrong/missed")
     println("  unmapped terms: ${pct(unmappedEscalated, unmappedTotal)} escalated (pass requires 100%)")
-    println("  -> ${out.relativeTo(out.parentFile.parentFile.parentFile)}")
+    println("  -> ${out.path}")
 }
 
-private fun detection(cases: File, kb: InMemoryKnowledgeBase, lexicon: Lexicon, out: File) {
-    if (!cases.exists()) { println("skip: ${cases.name} not found"); return }
+/**
+ * Criterion 5, reported three ways so incomplete coverage cannot inflate the headline:
+ *  - coverage: share of pairs whose two inputs both normalise to a KB ingredient;
+ *  - covered-pair recall / false-positive rate: how well the engine does on what it covers;
+ *  - end-to-end recall: over ALL interacting pairs, counting an uncovered pair as a miss
+ *    (the user would get no alert). This is the number a user experiences.
+ * Inputs go through the same IngredientNormaliser the app uses. An Ambiguous input is resolved
+ * to its first option and counted separately as "needs user confirmation".
+ */
+private fun detection(cases: File, kb: InMemoryKnowledgeBase, normaliser: IngredientNormaliser, out: File) {
+    val rows = requireCases(cases, 100, "Criterion 5")
     val engine = InteractionEngine(kb)
-    var tp = 0; var fn = 0; var fp = 0; var tn = 0; var skipped = 0
-    val report = StringBuilder("a,b,expected,detected,severity,verdict\n")
-    for (r in Csv.read(cases)) {
-        val a = lexicon.lookup(r.getValue("a")).firstOrNull()?.ingredient
-        val b = lexicon.lookup(r.getValue("b")).firstOrNull()?.ingredient
+    var tp = 0; var fn = 0; var fp = 0; var tn = 0
+    var posTotal = 0; var negTotal = 0; var posUncovered = 0; var negUncovered = 0; var needsConfirm = 0
+    val report = StringBuilder("a,b,expected,a_resolved,b_resolved,covered,needs_confirmation,detected,severity,verdict\n")
+    fun resolve(text: String): Pair<com.airgaprx.core.model.Ingredient?, Boolean> =
+        when (val r = normaliser.normalise(Mention(text, MentionSource.MANUAL)).resolution) {
+            is Resolution.Resolved -> r.candidate.ingredient to false
+            is Resolution.Ambiguous -> r.options.first().ingredient to true
+            Resolution.Unrecognised -> null to false
+        }
+    for (r in rows) {
         val expected = r.getValue("expected").trim().lowercase() in setOf("yes", "interacting", "1", "true")
-        if (a == null || b == null) { skipped++; report.append("${Csv.quote(r.getValue("a"))},${Csv.quote(r.getValue("b"))},$expected,,,not_in_vocabulary\n"); continue }
-        val alerts = engine.evaluate(listOf(ShelfEntry(1, a, null), ShelfEntry(2, b, null)))
-        val detected = alerts.isNotEmpty()
-        val verdict = when { expected && detected -> { tp++; "TP" }; expected -> { fn++; "FN" }; detected -> { fp++; "FP" }; else -> { tn++; "TN" } }
-        report.append("${Csv.quote(a.name)},${Csv.quote(b.name)},$expected,$detected,${alerts.firstOrNull()?.severity ?: ""},$verdict\n")
+        if (expected) posTotal++ else negTotal++
+        val (a, ca) = resolve(r.getValue("a")); val (b, cb) = resolve(r.getValue("b"))
+        val covered = a != null && b != null
+        val confirm = ca || cb
+        if (confirm) needsConfirm++
+        var detected = false; var severity = ""
+        val verdict = if (!covered) {
+            if (expected) { posUncovered++; "FN_uncovered" } else { negUncovered++; "TN_uncovered" }
+        } else {
+            val alerts = engine.evaluate(listOf(ShelfEntry(1, a!!, null), ShelfEntry(2, b!!, null)))
+            detected = alerts.isNotEmpty(); severity = alerts.firstOrNull()?.severity?.name ?: ""
+            when { expected && detected -> { tp++; "TP" }; expected -> { fn++; "FN" }; detected -> { fp++; "FP" }; else -> { tn++; "TN" } }
+        }
+        report.append(listOf(r.getValue("a"), r.getValue("b"), expected.toString(), a?.id ?: "", b?.id ?: "",
+            covered.toString(), confirm.toString(), detected.toString(), severity, verdict).joinToString(",") { Csv.quote(it) }).append('\n')
     }
     out.writeText(report.toString())
-    println("\nCriterion 5: detection")
-    println("  recall ${pct(tp, tp + fn)} (TP $tp, FN $fn) - pass requires >= 95%")
-    println("  false-positive rate ${pct(fp, fp + tn)} (FP $fp, TN $tn) - pass requires <= 5%")
-    if (skipped > 0) println("  $skipped pair(s) skipped: ingredient not in vocabulary (report as a coverage limitation)")
+    println("\nCriterion 5: detection (${posTotal} interacting, ${negTotal} non-interacting pairs)")
+    println("  coverage: interacting ${pct(posTotal - posUncovered, posTotal)}, non-interacting ${pct(negTotal - negUncovered, negTotal)}")
+    println("  covered pairs: recall ${pct(tp, tp + fn)}, false-positive rate ${pct(fp, fp + tn)}")
+    println("  END-TO-END recall (uncovered = missed): ${pct(tp, posTotal)} - M1 pass requires >= 95%")
+    println("  false-positive rate over all non-interacting pairs: ${pct(fp, negTotal)} - M1 pass requires <= 5%")
+    if (needsConfirm > 0) println("  $needsConfirm pair(s) needed user confirmation of an ambiguous input (first option assumed)")
+    println("  -> ${out.path}")
 }
 
 private fun pct(n: Int, d: Int) = if (d == 0) "n/a" else "%.1f%% (%d/%d)".format(100.0 * n / d, n, d)

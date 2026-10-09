@@ -25,7 +25,7 @@ import java.io.File
  * dependency is visible in one file). Domain services are rebuilt whenever a new knowledge base
  * is installed, because the Lexicon is derived from the knowledge-base vocabulary.
  */
-class AppContainer(private val context: Context) {
+class AppContainer(val context: Context) {
     val kbRepository = KnowledgeBaseRepository(context)
     val medicationRepository by lazy { MedicationRepository(context) }
     val ocr by lazy { MlKitOcrService() }

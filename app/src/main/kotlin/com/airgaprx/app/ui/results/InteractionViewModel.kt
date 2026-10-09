@@ -48,6 +48,9 @@ class InteractionViewModel(private val c: AppContainer) : ViewModel() {
             Triple(ranked, c.medicationRepository.unchecked(services.kb), entries.size)
         }
         c.lastAlerts = alerts
+        com.airgaprx.app.platform.PerfLog.record(
+            c.context, source = "check", checkMs = t.values.sum(), outcome = "${alerts.size} alerts / $checked ingredients",
+        )
         _ui.value = ResultsUi.Done(alerts, unchecked, checked, services.kb.version, acknowledged = false, timings = StageTimings(t))
     }
 

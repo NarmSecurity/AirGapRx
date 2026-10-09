@@ -78,7 +78,7 @@ fun CaptureScreen(onBack: () -> Unit, onRecognised: () -> Unit, onManualAdd: () 
 
     // Gallery path: same pipeline, used for repeatable evaluation with a fixed photo set (criteria 2-5).
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) runCatching { InputImage.fromFilePath(context, uri) }.getOrNull()?.let { vm.onImage(it) {} }
+        if (uri != null) runCatching { InputImage.fromFilePath(context, uri) }.getOrNull()?.let { vm.onImage(it, shutterAtNanos = null) {} }
     }
 
     val imageCapture = remember {
@@ -135,11 +135,12 @@ fun CaptureScreen(onBack: () -> Unit, onRecognised: () -> Unit, onManualAdd: () 
                 }
                 FilledIconButton(
                     onClick = {
+                        val shutterAt = android.os.SystemClock.elapsedRealtimeNanos()
                         imageCapture.takePicture(ContextCompat.getMainExecutor(context), object : ImageCapture.OnImageCapturedCallback() {
                             override fun onCaptureSuccess(image: ImageProxy) {
                                 val media = image.image
                                 if (media == null) { image.close(); return }
-                                vm.onImage(InputImage.fromMediaImage(media, image.imageInfo.rotationDegrees)) { image.close() }
+                                vm.onImage(InputImage.fromMediaImage(media, image.imageInfo.rotationDegrees), shutterAt) { image.close() }
                             }
                             override fun onError(exception: ImageCaptureException) = Unit
                         })

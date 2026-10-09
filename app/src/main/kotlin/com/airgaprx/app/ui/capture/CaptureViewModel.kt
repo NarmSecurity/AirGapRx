@@ -1,6 +1,8 @@
 package com.airgaprx.app.ui.capture
 
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
+import com.airgaprx.app.platform.PerfLog
 import androidx.lifecycle.viewModelScope
 import com.airgaprx.app.AppContainer
 import com.airgaprx.core.pipeline.RecaptureReason
@@ -29,7 +31,11 @@ class CaptureViewModel(private val c: AppContainer) : ViewModel() {
     private val _state = MutableStateFlow<CaptureState>(CaptureState.Ready)
     val state: StateFlow<CaptureState> = _state
 
-    fun onImage(image: InputImage, releaseImage: () -> Unit) {
+    /**
+     * @param shutterAtNanos SystemClock.elapsedRealtimeNanos() when the shutter was tapped, or null
+     *   for a gallery photo. Used for the shutter-to-review latency (criterion 8).
+     */
+    fun onImage(image: InputImage, shutterAtNanos: Long? = null, releaseImage: () -> Unit) {
         var released = false
         val release = { if (!released) { released = true; releaseImage() } }
         if (_state.value == CaptureState.Processing) { release(); return }
@@ -44,6 +50,13 @@ class CaptureViewModel(private val c: AppContainer) : ViewModel() {
                 release()
                 val outcome = withContext(Dispatchers.Default) { services.pipeline.process(ocr, t) }
                 c.lastTimings = outcome.timings
+                PerfLog.record(
+                    c.context,
+                    source = if (shutterAtNanos != null) "camera" else "gallery",
+                    shutterToReviewMs = shutterAtNanos?.let { (SystemClock.elapsedRealtimeNanos() - it) / 1_000_000 },
+                    stages = outcome.timings.stages,
+                    outcome = outcome::class.simpleName ?: "",
+                )
                 _state.value = when (outcome) {
                     is RecognitionOutcome.NeedsRecapture -> CaptureState.Retake(outcome.reason, outcome.confidence)
                     is RecognitionOutcome.Recognised -> {
