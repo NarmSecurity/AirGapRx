@@ -35,6 +35,9 @@ class KbPackageTest {
         signer: KeyPair = keys,
         tamperDbAfterSigning: Boolean = false,
         extra: String? = null,
+        status: String = "release",
+        unreviewed: Int = 0,
+        ddi: String = "DDInter",
     ): ByteArray {
         val manifest = """
             format_version=1
@@ -44,6 +47,9 @@ class KbPackageTest {
             sources=TEST
             ingredient_count=1
             interaction_count=1
+            data_status=$status
+            unreviewed_rows=$unreviewed
+            ddi_source=$ddi
         """.trimIndent().toByteArray()
         val sig = Signature.getInstance("SHA256withECDSA").run { initSign(signer.private); update(manifest); sign() }
         val out = ByteArrayOutputStream()
@@ -57,7 +63,8 @@ class KbPackageTest {
         return out.toByteArray()
     }
 
-    private fun installer(): KbInstaller = KbInstaller(Files.createTempDirectory("kb").toFile(), verifier)
+    private fun installer(requireRelease: Boolean = false): KbInstaller =
+        KbInstaller(Files.createTempDirectory("kb").toFile(), verifier, com.airgaprx.core.kb.KbPolicy(requireRelease))
     private fun KbInstaller.releaseId() = (current() as KbCheck.Valid).version.releaseId
 
     @Test fun validPackageInstalls() {
@@ -100,5 +107,24 @@ class KbPackageTest {
         i.install(ByteArrayInputStream(pkg("2026.10", "2026-10-01T00:00:00Z")))
         File(i.currentDir, KbPackage.DB).appendBytes(byteArrayOf(0))
         assertTrue(i.current() is KbCheck.Invalid)
+    }
+
+    /** Review finding 2: a correctly signed development KB must be refused by a release build. */
+    @Test fun releasePolicyRejectsSignedDevelopmentData() {
+        val i = installer(requireRelease = true)
+        val dev = i.install(ByteArrayInputStream(pkg("dev", "2026-10-01T00:00:00Z", status = "development", unreviewed = 37, ddi = "DEV-FIXTURE")))
+        assertTrue(dev.toString(), dev is InstallResult.Rejected)
+        val unreviewed = i.install(ByteArrayInputStream(pkg("half", "2026-10-02T00:00:00Z", unreviewed = 3)))
+        assertTrue(unreviewed is InstallResult.Rejected)
+        val ok = i.install(ByteArrayInputStream(pkg("rel", "2026-10-03T00:00:00Z")))
+        assertTrue(ok.toString(), ok is InstallResult.Installed)
+    }
+
+    @Test fun developmentDataStillLoadsInDebugPolicy() {
+        val r = installer(requireRelease = false).install(
+            ByteArrayInputStream(pkg("dev", "2026-10-01T00:00:00Z", status = "development", unreviewed = 37, ddi = "DEV-FIXTURE"))
+        )
+        assertTrue(r is InstallResult.Installed)
+        assertTrue(!(r as InstallResult.Installed).version.isReleaseGrade)
     }
 }

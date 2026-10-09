@@ -90,6 +90,12 @@ fun AboutScreen(onBack: () -> Unit) {
                         Field("Compiled", v.compiledAt)
                         Field("Ingredients", v.ingredientCount.toString())
                         Field("Interaction records", v.interactionCount.toString())
+                        Field("Data status", if (v.isReleaseGrade) "Reviewed release" else "${v.dataStatus} (not reviewed)")
+                        Field("Drug-drug source", listOf(v.ddiSource, v.ddiSourceDetail).filter { it.isNotBlank() }.joinToString(", "))
+                        if (!v.isReleaseGrade) Field(
+                            "Unreviewed curated rows",
+                            if (v.unreviewedRows == Int.MAX_VALUE) "unknown" else v.unreviewedRows.toString(),
+                        )
                         Text("SHA-256 checksum", style = MaterialTheme.typography.labelMedium)
                         SelectionContainer { Text(v.dbSha256, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall) }
                         Text("Sources", style = MaterialTheme.typography.labelMedium)

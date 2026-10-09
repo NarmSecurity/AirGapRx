@@ -67,6 +67,11 @@ class KbVerifier(publicKeyDer: ByteArray) {
                 sources = props.getProperty("sources", "").split("|").map { it.trim() }.filter { it.isNotEmpty() },
                 ingredientCount = props.getProperty("ingredient_count", "0").toIntOrNull() ?: 0,
                 interactionCount = props.getProperty("interaction_count", "0").toIntOrNull() ?: 0,
+                dataStatus = props.getProperty("data_status", "development"),
+                // Missing field = old/unknown package: treat as unreviewed.
+                unreviewedRows = props.getProperty("unreviewed_rows")?.toIntOrNull() ?: Int.MAX_VALUE,
+                ddiSource = props.getProperty("ddi_source", "unknown"),
+                ddiSourceDetail = props.getProperty("ddi_source_detail", ""),
             )
         )
     }
@@ -95,18 +100,42 @@ sealed interface InstallResult {
 }
 
 /**
+ * What this build is willing to load. Release builds set [requireReleaseGrade] so development or
+ * unreviewed data is refused even when correctly signed (the signature proves authenticity,
+ * not clinical review).
+ */
+data class KbPolicy(val requireReleaseGrade: Boolean = false)
+
+/**
  * Installs verified packages with an atomic directory swap. On any failure the previously
  * installed knowledge base is left untouched (evaluation criterion 6).
  *
  * Layout under [root]: `current/` (live), `staging/` (being verified), `previous/` (transient).
  */
-class KbInstaller(private val root: File, private val verifier: KbVerifier) {
+class KbInstaller(
+    private val root: File,
+    private val verifier: KbVerifier,
+    private val policy: KbPolicy = KbPolicy(),
+) {
     val currentDir: File get() = File(root, "current")
     private val stagingDir get() = File(root, "staging")
     private val previousDir get() = File(root, "previous")
 
     /** Re-verifies the live copy, detecting on-disk tampering since install. */
-    fun current(): KbCheck = if (currentDir.isDirectory) verifier.verify(currentDir) else KbCheck.Invalid("Not installed")
+    fun current(): KbCheck {
+        if (!currentDir.isDirectory) return KbCheck.Invalid("Not installed")
+        return applyPolicy(verifier.verify(currentDir))
+    }
+
+    private fun applyPolicy(check: KbCheck): KbCheck {
+        if (check !is KbCheck.Valid || !policy.requireReleaseGrade || check.version.isReleaseGrade) return check
+        val v = check.version
+        return KbCheck.Invalid(
+            "This build only accepts a reviewed knowledge base; package ${v.releaseId} is ${v.dataStatus} data " +
+                "(${if (v.unreviewedRows == Int.MAX_VALUE) "review status unknown" else "${v.unreviewedRows} unreviewed rows"}, " +
+                "drug-drug source ${v.ddiSource})"
+        )
+    }
 
     fun install(zip: InputStream, allowDowngrade: Boolean = false): InstallResult {
         root.mkdirs()
@@ -114,7 +143,7 @@ class KbInstaller(private val root: File, private val verifier: KbVerifier) {
         stagingDir.mkdirs()
         try {
             unzip(zip, stagingDir)?.let { return InstallResult.Rejected(it) }
-            val staged = verifier.verify(stagingDir)
+            val staged = applyPolicy(verifier.verify(stagingDir))
             if (staged is KbCheck.Invalid) return InstallResult.Rejected(staged.reason)
             val newVersion = (staged as KbCheck.Valid).version
 

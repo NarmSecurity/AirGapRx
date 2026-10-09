@@ -17,10 +17,14 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Debug builds may load the development knowledge base (clearly labelled in the UI).
+        buildConfigField("boolean", "REQUIRE_RELEASE_KB", "false")
     }
 
     buildTypes {
         release {
+            // Release builds refuse any KB that did not pass `build_kb.py --release` (signed metadata).
+            buildConfigField("boolean", "REQUIRE_RELEASE_KB", "true")
             isMinifyEnabled = false
             // Signed with the debug key so the release APK can be sideloaded for marking/testing.
             signingConfig = signingConfigs.getByName("debug")
@@ -128,3 +132,32 @@ listOf("Debug", "Release").forEach { variant ->
     }
     tasks.matching { it.name == "assemble$variant" }.configureEach { dependsOn(task) }
 }
+
+/**
+ * Release gate (build time): refuse to package a release APK around a development or unreviewed
+ * knowledge base. The app enforces the same rule at runtime from the *signed* manifest, so editing
+ * this check away still yields an APK that refuses to load development data.
+ */
+val verifyBundledKbIsRelease = tasks.register("verifyBundledKbIsRelease") {
+    group = "verification"
+    description = "Fails unless the bundled KB was built with build_kb.py --release."
+    val zip = layout.projectDirectory.file("src/main/assets/kb/airgaprx-kb.zip")
+    doLast {
+        val props = java.util.Properties()
+        java.util.zip.ZipFile(zip.asFile).use { z ->
+            val entry = z.getEntry("kb.manifest.properties") ?: throw GradleException("KB package has no manifest")
+            z.getInputStream(entry).use { props.load(it) }
+        }
+        val status = props.getProperty("data_status", "development")
+        val unreviewed = props.getProperty("unreviewed_rows")?.toIntOrNull() ?: Int.MAX_VALUE
+        val ddi = props.getProperty("ddi_source", "unknown")
+        if (status != "release" || unreviewed != 0 || ddi != "DDInter") {
+            throw GradleException(
+                "Release blocked: bundled KB ${props.getProperty("release_id")} is $status data " +
+                    "(unreviewed rows: $unreviewed, drug-drug source: $ddi). Run python kb/build_kb.py --release."
+            )
+        }
+        println("KB release gate OK: ${props.getProperty("release_id")}")
+    }
+}
+tasks.matching { it.name == "assembleRelease" || it.name == "bundleRelease" }.configureEach { dependsOn(verifyBundledKbIsRelease) }

@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.airgaprx.app.ui.common.DevDataBanner
 import com.airgaprx.app.ui.common.Disclaimer
 import com.airgaprx.app.ui.common.SeverityChip
 import com.airgaprx.app.ui.common.appViewModel
@@ -97,6 +98,7 @@ private fun DoneContent(s: ResultsUi.Done, modifier: Modifier, onOpenAlert: (Int
     val minor = s.alerts.withIndex().filter { it.value.severity in nonInterruptiveLow }
 
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { DevDataBanner(s.kb, Modifier.fillMaxWidth()) }
         item {
             Text(
                 "Checked ${s.checkedCount} ingredient(s) against knowledge base ${s.kb.releaseId}.",

@@ -115,4 +115,13 @@ data class KbVersion(
     val sources: List<String>,
     val ingredientCount: Int,
     val interactionCount: Int,
-)
+    /** "release" only when built with `build_kb.py --release` (all curated rows reviewed, DDInter present). */
+    val dataStatus: String = "development",
+    val unreviewedRows: Int = 0,
+    val ddiSource: String = "unknown",
+    val ddiSourceDetail: String = "",
+) {
+    /** True only for data that passed the review gate. A valid signature alone does not imply this. */
+    val isReleaseGrade: Boolean
+        get() = dataStatus == "release" && unreviewedRows == 0 && ddiSource == "DDInter"
+}

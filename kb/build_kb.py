@@ -87,6 +87,9 @@ class Builder:
         self.interactions: dict[tuple, dict] = {}   # (a, b, source) -> row
         self.warnings: list[str] = []
         self.sources: list[str] = []
+        self.unreviewed = 0
+        self.ddi_source = "none"
+        self.ddi_detail = ""
 
     def warn(self, msg: str) -> None:
         self.warnings.append(msg)
@@ -152,6 +155,7 @@ class Builder:
                 unreviewed += 1
             self.add_interaction(a, b, severity(r["severity"]), r["mechanism"] or None, r["management"] or None,
                                  "Curated supplement table", r.get("evidence_ref") or None)
+        self.unreviewed = unreviewed
         if unreviewed:
             msg = f"{unreviewed} curated interaction rows are not yet reviewed (reviewed != yes)"
             if release:
@@ -167,8 +171,14 @@ class Builder:
             self.warn("DDInter not found: using DEV-FIXTURE drug-drug pairs (development only)")
             files = [os.path.join(SRC, "dev_fixture_ddi.csv")]
             label = "DEV-FIXTURE (not clinical data)"
+            self.ddi_source = "DEV-FIXTURE"
+            self.ddi_detail = "dev_fixture_ddi.csv"
         else:
             label = "DDInter (CC BY-NC-SA 4.0)"
+            self.ddi_source = "DDInter"
+            # Download date = oldest file modification time (override with --ddinter-date).
+            oldest = min(os.path.getmtime(f) for f in files)
+            self.ddi_detail = f"{len(files)} files, downloaded {datetime.fromtimestamp(oldest, timezone.utc).date().isoformat()}"
         n = 0
         for path in files:
             for r in read_csv(path):
@@ -281,6 +291,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--release", action="store_true", help="enforce release checks (reviewed rows, DDInter present)")
     ap.add_argument("--release-id", help="override release identifier")
+    ap.add_argument("--ddinter-date", help="DDInter download date to record (default: file modification date)")
     args = ap.parse_args()
 
     now = datetime.now(timezone.utc).replace(microsecond=0)
@@ -292,6 +303,11 @@ def main() -> None:
     b.load_curated(args.release)
     b.load_ddinter(args.release)
     b.load_rxnorm()
+    if args.ddinter_date and b.ddi_source == "DDInter":
+        b.ddi_detail = b.ddi_detail.split(", downloaded")[0] + f", downloaded {args.ddinter_date}"
+    # Review status travels inside the *signed* manifest, so the app can refuse development data
+    # in a release build. A valid signature proves who built the KB, not that it was reviewed.
+    data_status = "release" if args.release else "development"
 
     os.makedirs(BUILD_DIR, exist_ok=True)
     db_path = os.path.join(BUILD_DIR, "kb.sqlite")
@@ -305,6 +321,10 @@ def main() -> None:
         f"compiled_at={compiled_at}",
         f"db_sha256={db_sha}",
         "sources=" + " | ".join(b.sources),
+        f"data_status={data_status}",
+        f"unreviewed_rows={b.unreviewed}",
+        f"ddi_source={b.ddi_source}",
+        f"ddi_source_detail={b.ddi_detail}",
         f"ingredient_count={len(b.ingredients)}",
         f"interaction_count={len(b.interactions)}",
     ]).encode("utf-8") + b"\n"

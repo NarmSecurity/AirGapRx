@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.airgaprx.app.data.KbState
+import com.airgaprx.app.ui.common.DevDataBanner
 import com.airgaprx.app.ui.common.KindChip
 import com.airgaprx.app.ui.common.OfflineBadge
 import com.airgaprx.app.ui.common.appViewModel
@@ -88,7 +89,7 @@ fun ShelfScreen(
                     "Knowledge base unavailable: ${kb.reason}. Interaction checks are disabled.",
                     color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp),
                 )
-                is KbState.Ready -> Unit
+                is KbState.Ready -> DevDataBanner(kb.kb.version, Modifier.fillMaxWidth().padding(horizontal = 16.dp))
             }
 
             if (state.rows.isEmpty()) {

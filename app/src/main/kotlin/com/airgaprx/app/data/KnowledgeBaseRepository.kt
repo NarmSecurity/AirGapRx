@@ -6,7 +6,9 @@ import android.util.Log
 import com.airgaprx.core.kb.InstallResult
 import com.airgaprx.core.kb.KbCheck
 import com.airgaprx.core.kb.KbInstaller
+import com.airgaprx.app.BuildConfig
 import com.airgaprx.core.kb.KbPackage
+import com.airgaprx.core.kb.KbPolicy
 import com.airgaprx.core.kb.KbVerifier
 import com.airgaprx.core.kb.KnowledgeBase
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +36,10 @@ class KnowledgeBaseRepository(private val context: Context) {
     private val verifier = KbVerifier(
         KbVerifier.pemToDer(context.assets.open("kb/kb_public_key.pem").bufferedReader().use { it.readText() })
     )
-    private val installer = KbInstaller(File(context.noBackupFilesDir, "kb"), verifier)
+    private val installer = KbInstaller(
+        File(context.noBackupFilesDir, "kb"), verifier,
+        KbPolicy(requireReleaseGrade = BuildConfig.REQUIRE_RELEASE_KB),
+    )
     private val mutex = Mutex()
     private var open: SqliteKnowledgeBase? = null
 

@@ -106,3 +106,21 @@ fun Disclaimer(modifier: Modifier = Modifier) {
         modifier = modifier,
     )
 }
+
+/** Shown whenever the loaded knowledge base did not pass the release review gate. */
+@Composable
+fun DevDataBanner(version: com.airgaprx.core.model.KbVersion, modifier: Modifier = Modifier) {
+    if (version.isReleaseGrade) return
+    androidx.compose.material3.Card(
+        modifier,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = SeverityColors.moderateContainer),
+    ) {
+        Text(
+            "Development data: this knowledge base has not been clinically reviewed " +
+                "(drug-drug source: ${version.ddiSource}). Use for software testing only.",
+            color = SeverityColors.moderate,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(12.dp),
+        )
+    }
+}
