@@ -45,7 +45,16 @@ class LexiconLabelParser(
         return mentions.filter { seen.add(Text.normalise(it.text)) }
     }
 
-    private data class Hit(val start: Int, val end: Int, val mode: Mode, val opensPanel: Boolean)
+    private data class Hit(
+        val start: Int,
+        val end: Int,
+        val mode: Mode,
+        val opensPanel: Boolean,
+        /** Only punctuation/space before the header on its line (a real section title, not running text). */
+        val atLineStart: Boolean = false,
+        /** Common words ("contains", "ingredients") that only count as headers at the start of a line. */
+        val generic: Boolean = false,
+    )
 
     /** Splits OCR lines into moded segments. Public for tests and for the evaluation report. */
     fun segments(ocr: OcrResult): List<Segment> {
@@ -67,6 +76,10 @@ class LexiconLabelParser(
 
             var cursor = 0
             for (hit in headerHits(text)) {
+                // A panel header inside running text is not a section title: "Do not take with a
+                // product that contains warfarin" must stay in WARNING mode. Generic words only
+                // open a panel at the start of a line; no panel header re-opens ACTIVE mid-warning.
+                if (hit.opensPanel && !hit.atLineStart && (hit.generic || mode == Mode.WARNING)) continue
                 if (hit.start > cursor) out += Segment(text.substring(cursor, hit.start), mode, inPanel && mode == Mode.ACTIVE)
                 mode = hit.mode
                 inPanel = hit.opensPanel
@@ -81,7 +94,10 @@ class LexiconLabelParser(
     /** All header matches in a line; overlapping matches resolve to the longest ("each dose contains" beats "dose"). */
     private fun headerHits(line: String): List<Hit> {
         val all = ArrayList<Hit>()
-        PANEL_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.ACTIVE, true) } }
+        fun atStart(i: Int) = line.substring(0, i).none { it.isLetterOrDigit() }
+        PANEL_HEADERS.zip(PANEL_HEADER_PATTERNS).forEach { (h, p) ->
+            p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.ACTIVE, true, atStart(it.range.first), h in GENERIC_PANEL_HEADERS) }
+        }
         EXCIPIENT_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.EXCIPIENT, false) } }
         WARNING_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.WARNING, false) } }
         // Section titles such as "Directions" only count at the start of a line.
@@ -144,6 +160,8 @@ class LexiconLabelParser(
             "each softgel contains", "each caplet contains", "each 5 ml contains", "each dose contains",
             "each serve contains", "each sachet contains", "composition", "ingredients", "contains",
         )
+        /** Panel headers that are also everyday words; honoured only at the start of a line. */
+        val GENERIC_PANEL_HEADERS = setOf("contains", "ingredients", "composition")
         val EXCIPIENT_HEADERS = listOf(
             "inactive ingredients", "other ingredients", "excipients", "also contains", "non active ingredients",
             "nonactive ingredients", "non medicinal ingredients",

@@ -86,6 +86,32 @@ class LabelParserTest {
         assertFalse("warfarin is only mentioned in a warning: $texts", texts.any { it.contains("warfarin") })
     }
 
+    /** Second review: "contains" inside a warning re-opened an active panel and added warfarin. */
+    @Test fun containsInsideWarningDoesNotReopenActivePanel() {
+        val texts = parser.parse(ocr(
+            "Each tablet contains Paracetamol 500 mg",
+            "Warnings: Do not take with a product that contains warfarin.",
+        )).map { it.text }
+        assertTrue(texts.contains("paracetamol"))
+        assertFalse("warfarin is only mentioned in a warning: $texts", texts.any { it.contains("warfarin") })
+    }
+
+    @Test fun genericHeaderMidSentenceIsNotAPanel() {
+        // Mid-sentence "contains" in front-of-pack text: no panel opens (so "Plus" is not escalated),
+        // but known names are still spotted.
+        val mentions = parser.parse(ocr("This pack contains Panadol Plus"))
+        assertTrue(mentions.any { it.text == "panadol" })
+        assertFalse(mentions.toString(), mentions.any { it.source == MentionSource.INGREDIENT_SECTION })
+    }
+
+    @Test fun headerAtLineStartAfterWarningStartsNewPanel() {
+        val texts = parser.parse(ocr(
+            "Warnings: do not use if pregnant",
+            "Ingredients: Ashwagandha 300 mg, Magnesium 100 mg",
+        )).map { it.text }
+        assertTrue(texts.toString(), texts.containsAll(listOf("ashwagandha", "magnesium")))
+    }
+
     @Test fun multiLinePanelWithSeveralActivesUnknownsAndMisspellings() {
         val lines = listOf(
             "Each tablet contains:",
