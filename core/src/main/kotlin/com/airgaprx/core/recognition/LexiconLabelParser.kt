@@ -7,81 +7,103 @@ import com.airgaprx.core.normalise.Lexicon
 import com.airgaprx.core.normalise.Text
 
 /**
- * Deterministic parser with two passes:
+ * Deterministic, section-aware label parser.
  *
- * 1. **Ingredient section**: text after headers such as "Active ingredients" or "Each tablet contains"
- *    is split into segments. Every segment becomes a mention even if it is not in the vocabulary,
- *    so an unknown active ingredient is escalated to the user instead of silently ignored (R3).
- * 2. **Lexicon spotting**: the whole label is scanned for known surface forms (longest match first,
- *    with conservative fuzzy matching to tolerate OCR errors).
+ * The label is split into segments at section headers. Each segment has a mode:
+ *  - **ACTIVE**: front-of-pack text and active-ingredient panels. Scanned for known names
+ *    (lexicon spotting). Inside an active-ingredient panel ("Each tablet contains…") every list
+ *    item also becomes a mention, even if it is not in the vocabulary, so unknown actives are
+ *    escalated to the user (R3) instead of being silently ignored.
+ *  - **EXCIPIENT** ("Other ingredients", "Excipients"): skipped, so "magnesium stearate" does not
+ *    raise a magnesium interaction.
+ *  - **WARNING** ("Do not take with warfarin", "Interactions"): skipped, because warnings name
+ *    *other* medicines that are not in the product.
+ *  - **OTHER** ("Directions", "Storage"): skipped.
  *
- * Excipient sections and common excipient phrases are removed first, so "magnesium stearate" or
- * "iron oxide" (a colourant) do not raise magnesium or iron interactions.
+ * Modes are not permanent. A later header switches mode again, and every new OCR text block
+ * starts back in ACTIVE, so an active panel that OCR reads *after* an excipient list is still
+ * parsed. The design choice is to fail visibly: when in doubt, text is kept and shown on the
+ * Review screen rather than dropped.
  */
 class LexiconLabelParser(
     private val lexicon: Lexicon,
     private val fuzzySpotFloor: Double = 0.85,
 ) : LabelParser {
 
+    enum class Mode { ACTIVE, EXCIPIENT, WARNING, OTHER }
+
+    /** A piece of label text with its section mode. [inPanel] is true inside an active-ingredient panel. */
+    data class Segment(val text: String, val mode: Mode, val inPanel: Boolean)
+
     override fun parse(ocr: OcrResult): List<Mention> {
-        val lines = ocr.lines.map { it.text }.filter { it.isNotBlank() }
-        val active = activeLines(lines)
+        val segs = segments(ocr)
+        val active = segs.filter { it.mode == Mode.ACTIVE }.map { it.copy(text = removeExcipients(it.text)) }
         val mentions = ArrayList<Mention>()
-        mentions += sectionMentions(active)
-        mentions += spotMentions(active)
+        mentions += panelMentions(active.filter { it.inPanel })
+        mentions += spotMentions(active.map { it.text })
         val seen = HashSet<String>()
         return mentions.filter { seen.add(Text.normalise(it.text)) }
     }
 
-    /**
-     * Drops everything from an excipient header onwards and strips known excipient phrases.
-     * Works on the original text (punctuation preserved) so segment separators survive.
-     */
-    internal fun activeLines(lines: List<String>): List<String> {
-        val out = ArrayList<String>()
-        for (line in lines) {
-            val stopAt = EXCIPIENT_HEADER_PATTERNS.mapNotNull { it.find(line)?.range?.first }.minOrNull()
-            if (stopAt != null) {
-                val before = line.substring(0, stopAt).trim()
-                if (before.isNotEmpty()) out += removeExcipients(before)
-                break
+    private data class Hit(val start: Int, val end: Int, val mode: Mode, val opensPanel: Boolean)
+
+    /** Splits OCR lines into moded segments. Public for tests and for the evaluation report. */
+    fun segments(ocr: OcrResult): List<Segment> {
+        val out = ArrayList<Segment>()
+        var block = Int.MIN_VALUE
+        var mode = Mode.ACTIVE
+        var inPanel = false
+        var panelLines = 0
+        for (line in ocr.lines) {
+            val text = line.text
+            if (text.isBlank()) continue
+            if (line.block != block) {
+                block = line.block
+                // A new OCR block is a layout boundary: skipped modes end here (they never carry
+                // over to a new block), but an open ingredient panel may continue into it.
+                if (mode != Mode.ACTIVE) { mode = Mode.ACTIVE; inPanel = false }
             }
-            out += removeExcipients(line)
+            if (inPanel && ++panelLines > MAX_PANEL_LINES) inPanel = false
+
+            var cursor = 0
+            for (hit in headerHits(text)) {
+                if (hit.start > cursor) out += Segment(text.substring(cursor, hit.start), mode, inPanel && mode == Mode.ACTIVE)
+                mode = hit.mode
+                inPanel = hit.opensPanel
+                if (hit.opensPanel) panelLines = 0
+                cursor = hit.end
+            }
+            if (cursor < text.length) out += Segment(text.substring(cursor), mode, inPanel && mode == Mode.ACTIVE)
         }
-        return out.filter { it.isNotBlank() }
+        return out.filter { it.text.isNotBlank() }
     }
 
-    private fun removeExcipients(line: String): String {
-        var s = line
+    /** All header matches in a line; overlapping matches resolve to the longest ("each dose contains" beats "dose"). */
+    private fun headerHits(line: String): List<Hit> {
+        val all = ArrayList<Hit>()
+        PANEL_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.ACTIVE, true) } }
+        EXCIPIENT_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.EXCIPIENT, false) } }
+        WARNING_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.WARNING, false) } }
+        // Section titles such as "Directions" only count at the start of a line.
+        OTHER_HEADER_PATTERNS.forEach { p -> p.find(line)?.let { if (line.substring(0, it.range.first).isBlank()) all += Hit(it.range.first, it.range.last + 1, Mode.OTHER, false) } }
+        val chosen = ArrayList<Hit>()
+        for (h in all.sortedWith(compareByDescending<Hit> { it.end - it.start }.thenBy { it.start })) {
+            if (chosen.none { it.start < h.end && h.start < it.end }) chosen += h
+        }
+        return chosen.sortedBy { it.start }
+    }
+
+    private fun removeExcipients(text: String): String {
+        var s = text
         for (p in EXCIPIENT_PHRASE_PATTERNS) s = p.replace(s, " ")
         return s.trim().replace(Regex(" +"), " ")
     }
 
-    internal fun sectionMentions(lines: List<String>): List<Mention> {
-        val out = ArrayList<Mention>()
-        var i = 0
-        while (i < lines.size) {
-            val match = SECTION_HEADER_PATTERNS.firstNotNullOfOrNull { it.find(lines[i]) }
-            if (match == null) { i++; continue }
-            val segments = ArrayList<String>()
-            segments += lines[i].substring(match.range.last + 1)
-            var j = i + 1
-            while (j < lines.size && j <= i + MAX_SECTION_LINES) {
-                val n = Text.normalise(lines[j])
-                if (STOP_HEADERS.any { n == it || n.startsWith("$it ") } ||
-                    SECTION_HEADER_PATTERNS.any { it.containsMatchIn(lines[j]) }
-                ) break
-                segments += lines[j]
-                j++
-            }
-            segments.flatMap { it.split(SEPARATORS) }
-                .map { Text.stripDoses(it) }
-                .filter { seg -> seg.length >= 3 && seg.any { it.isLetter() } && seg.split(' ').size <= 5 }
-                .forEach { out += Mention(it, MentionSource.INGREDIENT_SECTION) }
-            i = j
-        }
-        return out
-    }
+    private fun panelMentions(panel: List<Segment>): List<Mention> =
+        panel.flatMap { it.text.split(SEPARATORS) }
+            .map { Text.stripDoses(it) }
+            .filter { seg -> seg.length >= 3 && seg.any { it.isLetter() } && seg.split(' ').size <= 5 }
+            .map { Mention(it, MentionSource.INGREDIENT_SECTION) }
 
     internal fun spotMentions(lines: List<String>): List<Mention> {
         val out = ArrayList<Mention>()
@@ -113,21 +135,27 @@ class LexiconLabelParser(
     }
 
     companion object {
-        private const val MAX_SECTION_LINES = 8
+        /** Safety valve for a panel header that OCR never closes; long panels (20+ lines) are rare. */
+        private const val MAX_PANEL_LINES = 30
         private val SEPARATORS = Regex("[,;:•·|/()\\[\\]]|\\s+and\\s+(?=[a-z])|\\s+\\+\\s+", RegexOption.IGNORE_CASE)
 
-        val SECTION_HEADERS = listOf(
+        val PANEL_HEADERS = listOf(
             "active ingredients", "active ingredient", "each tablet contains", "each capsule contains",
             "each softgel contains", "each caplet contains", "each 5 ml contains", "each dose contains",
-            "each serve contains", "composition", "contains",
-        )
-        val STOP_HEADERS = listOf(
-            "directions", "dosage", "dose", "warning", "warnings", "caution", "store", "storage",
-            "keep out", "adults", "children", "use", "indications", "batch", "exp",
+            "each serve contains", "each sachet contains", "composition", "ingredients", "contains",
         )
         val EXCIPIENT_HEADERS = listOf(
-            "inactive ingredients", "other ingredients", "excipients", "also contains", "non active",
-            "nonactive", "non medicinal",
+            "inactive ingredients", "other ingredients", "excipients", "also contains", "non active ingredients",
+            "nonactive ingredients", "non medicinal ingredients",
+        )
+        val WARNING_HEADERS = listOf(
+            "warning", "warnings", "caution", "precautions", "do not take", "do not use", "interactions",
+            "consult your doctor", "talk to your doctor", "ask your doctor", "consult your pharmacist",
+            "if you are taking", "side effects", "not suitable for",
+        )
+        val OTHER_HEADERS = listOf(
+            "directions", "directions for use", "dosage", "dose", "storage", "store below", "keep out of reach",
+            "indications", "uses", "batch", "exp", "expiry",
         )
         val EXCIPIENT_PHRASES = listOf(
             "magnesium stearate", "calcium stearate", "microcrystalline cellulose", "silicon dioxide",
@@ -142,8 +170,10 @@ class LexiconLabelParser(
         private fun phrasePattern(phrase: String) =
             Regex("\\b" + phrase.split(' ').joinToString("\\W+") { Regex.escape(it) } + "\\b", RegexOption.IGNORE_CASE)
 
-        private val SECTION_HEADER_PATTERNS = SECTION_HEADERS.map { phrasePattern(it) }
+        private val PANEL_HEADER_PATTERNS = PANEL_HEADERS.map { phrasePattern(it) }
         private val EXCIPIENT_HEADER_PATTERNS = EXCIPIENT_HEADERS.map { phrasePattern(it) }
+        private val WARNING_HEADER_PATTERNS = WARNING_HEADERS.map { phrasePattern(it) }
+        private val OTHER_HEADER_PATTERNS = OTHER_HEADERS.map { phrasePattern(it) }
         private val EXCIPIENT_PHRASE_PATTERNS = EXCIPIENT_PHRASES.sortedByDescending { it.length }.map { phrasePattern(it) }
     }
 }

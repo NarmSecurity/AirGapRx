@@ -59,6 +59,52 @@ class LabelParserTest {
         assertTrue(mentions.toString(), mentions.any { it.text.startsWith("ciproflox") })
     }
 
+    /** Review finding 3: an excipient list read first must not hide an active panel read later. */
+    @Test fun activesAfterExcipientSectionInSameBlockAreKept() {
+        val texts = parser.parse(ocr(
+            "Other ingredients: magnesium stearate, cellulose",
+            "Active ingredients: Ciprofloxacin 500 mg",
+        )).map { it.text }
+        assertTrue(texts.toString(), texts.any { it.startsWith("ciprofloxacin") })
+    }
+
+    @Test fun newOcrBlockEndsAnExcipientSection() {
+        val label = OcrResult(listOf(
+            TextLine("Excipients:", 0.95f, block = 0),
+            TextLine("microcrystalline cellulose, starch", 0.95f, block = 0),
+            TextLine("Eltroxin 100 microgram", 0.95f, block = 1),
+        ))
+        assertTrue(parser.parse(label).any { it.text == "eltroxin" })
+    }
+
+    @Test fun warningTextDoesNotAddOtherMedicines() {
+        val texts = parser.parse(ocr(
+            "Each tablet contains Paracetamol 500 mg",
+            "Warnings: Do not take with warfarin or other medicines containing paracetamol.",
+        )).map { it.text }
+        assertTrue(texts.contains("paracetamol"))
+        assertFalse("warfarin is only mentioned in a warning: $texts", texts.any { it.contains("warfarin") })
+    }
+
+    @Test fun multiLinePanelWithSeveralActivesUnknownsAndMisspellings() {
+        val lines = listOf(
+            "Each tablet contains:",
+            "Calcium carbonate 1250 mg",
+            "(equivalent to calcium 500 mg)",
+            "Cholecalciferol 25 microgram",
+            "Magnesium oxide 100 mg",
+            "Zinc citrate 10 mg",
+            "Ferrous fumarate 20 mg",
+            "Boron 1 mg",
+            "Levothyroxne 50 microgram",
+            "Lutein 2 mg",
+        )
+        val texts = parser.parse(OcrResult(lines.map { TextLine(it, 0.95f) })).map { it.text }
+        listOf("calcium carbonate", "cholecalciferol", "magnesium oxide", "ferrous fumarate", "boron", "lutein")
+            .forEach { assertTrue("missing $it in $texts", texts.contains(it)) }
+        assertTrue("misspelt active must reach review: $texts", texts.any { it.startsWith("levothyrox") })
+    }
+
     @Test fun hybridParserSurvivesModelFailure() {
         val failing = LabelParser { throw IllegalStateException("model not loaded") }
         val hybrid = HybridLabelParser(parser, failing)

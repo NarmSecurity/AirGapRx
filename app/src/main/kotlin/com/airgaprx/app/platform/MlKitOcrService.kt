@@ -19,10 +19,10 @@ class MlKitOcrService {
 
     suspend fun recognise(image: InputImage): OcrResult {
         val text = recognizer.process(image).await()
-        val lines = text.textBlocks.flatMap { block ->
+        val lines = text.textBlocks.flatMapIndexed { blockIndex, block ->
             block.lines.map { line ->
                 // Bundled model reports confidence in [0, 1]; 0 means "not reported".
-                TextLine(line.text, line.confidence.takeIf { it > 0f })
+                TextLine(line.text, line.confidence.takeIf { it > 0f }, blockIndex)
             }
         }
         return OcrResult(lines)

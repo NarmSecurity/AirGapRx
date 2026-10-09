@@ -67,8 +67,12 @@ data class Alert(
     val interruptive: Boolean = false,
 )
 
-/** One line of OCR output with the engine's confidence in [0, 1], or null if the engine gave none. */
-data class TextLine(val text: String, val confidence: Float?)
+/**
+ * One line of OCR output with the engine's confidence in [0, 1] (null if the engine gave none).
+ * [block] is the index of the OCR text block the line belongs to; blocks are layout boundaries
+ * the parser uses to end a skipped section (see LexiconLabelParser).
+ */
+data class TextLine(val text: String, val confidence: Float?, val block: Int = 0)
 
 /** Raw recogniser output for one captured frame (M1 OcrService output). */
 data class OcrResult(val lines: List<TextLine>) {
