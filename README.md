@@ -39,21 +39,24 @@ are often also the people taking several prescription medicines (Kantor et al., 
 checkers send your full medicine list to a server, and they cover herbal and supplement ingredients unevenly.
 
 AirGap Rx moves the whole check onto the phone. The app **declares no network permission**, so Android
-itself stops it from opening a connection. You don't have to trust a privacy policy; you can check the
-APK yourself.
+does not let the app open a network connection itself, and you can confirm the permission list in the APK.
+That is a strong property but not the whole story: a library can still pass data to another app over
+Android IPC (for example, ML Kit to Google Play services), so the evaluation captures **all device traffic**
+during a full session rather than relying on the permission list alone. See
+[`docs/evaluation/egress_protocol.md`](docs/evaluation/egress_protocol.md).
 
 ## Features
 
 | | Feature | Requirement (M1) |
 |---|---|---|
-| 📷 | **Label capture** with on-device OCR (CameraX + bundled ML Kit). Poor captures ask for a retake and nothing is guessed. | R2 |
-| 🔎 | **Ingredient recognition** using an ingredient-section parser, fuzzy lexicon spotting and an optional on-device language model | R2, R3 |
-| ❓ | **Review and disambiguation**: near-misses ("warfarn") and unknown actives ("ashwagandha") always go to the user to decide | R3 |
+| 📷 | **Label capture** with on-device OCR (CameraX + bundled ML Kit). Low-confidence captures ask for a retake and add nothing. | R2 |
+| 🔎 | **Ingredient recognition**: section-aware parser (skips excipient and warning sections), fuzzy lexicon spotting, and an *optional, not yet evaluated* on-device language model that can only propose names | R2, R3 |
+| ❓ | **Review before saving**: unclear matches ("warfarn") and unknown actives ("ashwagandha") must be decided by the user; close fuzzy matches are accepted provisionally and marked "Matched approximately" with a Change action | R3 |
 | 💊 | **Encrypted medication shelf**: SQLCipher, with the key wrapped by Android Keystore | R8 |
 | ⚠️ | **Pairwise interaction check** covering prescription medicines, OTC products, supplements, herbs and foods | R4, R6 |
 | 🚦 | **Severity ranking**: Major interactions interrupt and must be acknowledged. Minor ones are collapsed. | R5 |
 | 🔁 | **Duplicate ingredient warning** when the same active ingredient appears in two products (e.g. two paracetamol products) | R5 |
-| 📚 | **Signed, versioned knowledge base**: shows release, compile date and SHA-256, and accepts offline updates from a file | R4 |
+| 📚 | **Signed, versioned knowledge base**: shows release, compile date, SHA-256 and review status; accepts offline updates from a file; release builds refuse unreviewed or development data | R4 |
 | 🛡️ | **EgressGuard**: the app refuses to run if a build ever declares a network permission | R1 |
 
 ## How it works
@@ -91,7 +94,12 @@ deployment views.
 
 ### Option A: install the APK
 
-1. Download `app-release.apk` from the latest [GitHub release](../../releases) or from the **Actions** build artifacts.
+> **Status:** the Android module has not yet been built successfully; the first CI run is pending. Until
+> then use Option B. Debug APKs contain the **development knowledge base** (labelled in the app) and are for
+> software testing only.
+
+1. Download `app-debug.apk` from the latest **Actions** run (artifact `airgaprx-debug-apk`). Release APKs are only
+   produced for `v*` tags, and only when the bundled knowledge base passed review.
 2. On the phone, allow installs from your browser or file manager, then open the APK.
 3. Open **AirGap Rx**. When asked, allow camera access. That is the only permission the app requests.
 
@@ -136,13 +144,16 @@ never downloads anything itself.
 
 | Command | What it checks |
 |---|---|
-| `./gradlew :core:test` | 29 JVM unit tests: text normalisation, fuzzy matching, parser (incl. excipient filtering), normaliser escalation, ranking, duplicate detection, KB signature, checksum, downgrade and tamper rejection |
+| `./gradlew :core:test` | 36 JVM unit tests: text normalisation, fuzzy matching, parser (incl. excipient filtering), normaliser escalation, ranking, duplicate detection, section-aware parsing, KB signature, checksum, downgrade, tamper and review-status rejection |
 | `./gradlew :app:verifyNoNetworkPermissionRelease` | Fails if any network permission survives manifest merging (R1) |
 | `scripts/check_apk_permissions.sh <apk>` | Lists the APK's permissions with `aapt2` and fails on any network permission (R1) |
 | `python kb/build_kb.py && ./gradlew :core:evaluate` | Criteria 4 and 5: normalisation accuracy and detection recall against the compiled KB |
-| `./gradlew :app:connectedDebugAndroidTest` | Criteria 2, 3 and 8 on a device: OCR character accuracy, retake handling, latency and memory |
+| `./gradlew :app:connectedDebugAndroidTest` | Criteria 2 and 3 on a device: character accuracy, per-label ingredient recall (with/without LLM), retake handling |
+| scan 30 labels in the app, then `adb pull …/files/eval/timings.csv` | Criterion 8: shutter-to-review and check latency, peak memory (VmHWM) |
+| `./gradlew :app:assembleRelease` | Fails unless the bundled KB was built with `build_kb.py --release` |
 
-GitHub Actions runs the unit tests, both manifest checks, the APK build and the `aapt2` check on every push.
+GitHub Actions runs the unit tests, both manifest checks, the debug APK build and the `aapt2` check on every
+push, and the release gate on `v*` tags.
 The full evaluation plan is in [`docs/evaluation/`](docs/evaluation/README.md).
 
 ## Knowledge base
@@ -184,7 +195,9 @@ The repository includes a **development KB**. Its drug–drug pairs come from a 
 
 - Android only (a deliberate trade-off, see M1 Section 3.4).
 - Coverage is limited to the compiled sources. The most complete commercial compendia can't be redistributed, so they can't be used offline.
-- The curated supplement table is a draft until every row is reviewed against its source (`reviewed=yes`).
+- The curated supplement table is a draft until every row is reviewed against its source (`reviewed=yes`); rows
+  without a supporting source are removed, not just re-flagged.
+- The optional language-model parser has not been evaluated yet.
 - No dose-level checking, pharmacogenomics or clinician workflows (out of scope, M1 Section 1.2).
 - Interaction severity is shown as the source records it. It has not been clinically validated for this app.
 

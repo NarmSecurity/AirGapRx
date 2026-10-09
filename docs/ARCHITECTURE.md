@@ -41,12 +41,31 @@ the function they serve. No network node appears anywhere in the deployment.
 
 ## Design changes since Milestone 1 (for the reflection section)
 
-| M1 plan | As built | Why |
-|---|---|---|
-| NNAPI delegate for the parsing model | MediaPipe LLM Inference (GPU via OpenCL, CPU fallback), and the model is optional | NNAPI is deprecated from Android 15. MediaPipe LLM Inference is itself now in maintenance mode, with LiteRT-LM as its successor. |
-| Language model as the main parser | Deterministic parser first (ingredient section + lexicon); the language model only proposes extra names, and every proposal still goes through the normaliser | Safety: the model can't invent an ingredient. Testability: the deterministic path is covered by unit tests. |
-| SQLite FTS5 for ingredient search | In-memory trigram index (`Lexicon`) | The framework SQLite build doesn't guarantee FTS5. The vocabulary is small, and the index can be tested on the JVM. |
-| Single Android module | `:app` + pure-Kotlin `:core` | The compiler enforces the MVVM domain boundary, and the 29 domain tests run without a device. |
-| R1 checked by reading the manifest | Merged-manifest Gradle check + `aapt2` APK check + runtime EgressGuard + packet capture | ML Kit's dependencies add INTERNET through manifest merging, so the source manifest alone gives a false sense of safety. |
-| (not planned) | Duplicate-ingredient alert | The same active ingredient in two products (e.g. paracetamol) is a common overdose route, and it falls out of the shelf model at no extra cost. |
-| (not planned) | Excipient filtering in the parser | Excipients such as magnesium stearate or iron oxide would otherwise raise false magnesium or iron interactions. |
+Each change is listed with what M1 committed to, what was built, why, and what still has to be
+**measured** before the report can claim the change worked. "Not yet established" means the
+evidence does not exist yet; it must not be presented as done.
+
+| M1 commitment | As built | Why | Still to establish |
+|---|---|---|---|
+| A quantised small language model parses label text (core to the research question: capture + on-device inference + zero egress) | Deterministic section-aware parser + fuzzy lexicon; optional MediaPipe LLM that only *proposes* names, each still normalised against the KB | Safety (the model cannot introduce an ingredient that is not in the vocabulary or confirmed by the user); testability (deterministic path is unit-tested); risk (get the baseline working first) | Whether the LLM adds measurable value: run `OcrEvaluationTest` on the same held-out labels with and without a model and compare ingredient recall, extra items, latency and peak memory. If this is not done, report the LLM as an uncompleted part of the M1 design, not as evaluated |
+| NNAPI / GPU delegate for inference | MediaPipe LLM Inference (OpenCL GPU, CPU fallback) | NNAPI is deprecated from Android 15; MediaPipe LLM Inference is itself in maintenance mode with LiteRT-LM as successor | Whether it runs inside the R7 budget on the reference device |
+| RxNorm ingredient identifiers as canonical keys (R3) | Name-based slug keys (`st-johns-wort`); RxCUI attached optionally when RxNorm files are supplied | DDInter keys by its own IDs and names, the curated supplement table has no RxCUIs, and RxNorm does not cover many herbal products. Name-based keys plus a synonym table let three sources merge into one entity | Consequence for matching: merges depend on `synonyms.csv` (e.g. acetaminophen → paracetamol) and salt forms are folded into the parent ingredient. Report the number of DDInter names merged vs. left separate, and any duplicates found |
+| SQLite FTS5 for serverless ingredient search (R4) | In-memory trigram index (`Lexicon`) over all KB terms | Android's framework SQLite does not guarantee FTS5; the vocabulary is small enough to hold in memory; fuzzy edit-distance matching tolerates OCR errors in a way prefix/token FTS does not | Search time and memory with the full DDInter vocabulary on the reference device (criterion 8 log shows normalise_ms and peak RSS) |
+| Five-second result on a 4 GB device (R7) | Shutter→review and check latency + VmHWM logged for every real scan | Instrumentation exists | Actual measurements: 30 camera runs on a named device, median and max, peak memory |
+| R1 verified by packet capture over a full session **and** manifest inspection (M1 criterion 1) | Same, plus: merged-manifest Gradle check, `aapt2` APK check, runtime EgressGuard | Building revealed that ML Kit's dependencies add INTERNET through manifest merging, so inspecting the *source* manifest alone would have passed a non-compliant build | Packet capture result. Capture **all device traffic**, not just the app's UID: ML Kit can talk to Google Play services over Binder (a "ClientTelemetry" connection has been reported for bundled ML Kit), and Play services has its own network access |
+| Single Android module | `:app` + pure-Kotlin `:core` | The compiler enforces the MVVM domain boundary and the domain tests run without a device | — |
+| (not planned) | Duplicate-ingredient alert | The same active ingredient in two products (e.g. paracetamol) is a common overdose route, and it falls out of the shelf model | Covered by unit test; show on device |
+| (not planned) | Section-aware parsing: excipient and warning sections skipped, sections reset at OCR block boundaries | Excipients (magnesium stearate, iron oxide) raised false mineral interactions; warnings ("do not take with warfarin") added medicines that are not in the product | Effect on ingredient recall on the held-out labels |
+
+### Defects found and fixed during development (reflection evidence)
+
+| Defect | Found by | Fix | Regression test |
+|---|---|---|---|
+| "Levothyroxine sodium 100 microgram" not recognised: spelled-out units were not stripped | Criterion-4 harness run on seed cases | Added spelled-out units to `Text.stripDoses` | `TextTest.stripDosesRemovesAmountsButKeepsNumericNames` |
+| An ambiguous item vanished when one of its options matched an already-resolved ingredient ("Vitamin E" next to "Vitamin K") | External code review | `normaliseAll` only collapses identical text or identical resolved ingredients | `IngredientNormaliserTest.ambiguousItemIsKeptEvenIfAnOptionIsAlreadyResolved` |
+| Parsing stopped at the first excipient header, so actives read later were lost | External code review | Section modes that switch at headers and reset at OCR block boundaries | `LabelParserTest.activesAfterExcipientSectionInSameBlockAreKept`, `newOcrBlockEndsAnExcipientSection` |
+| Warning text added other medicines to the product | Found while fixing the above | WARNING mode | `LabelParserTest.warningTextDoesNotAddOtherMedicines` |
+| A correctly signed *development* KB could be packaged in a release APK | External code review | Review status in the signed manifest; release policy at runtime; Gradle release gate | `KbPackageTest.releasePolicyRejectsSignedDevelopmentData` |
+
+Each regression test above was confirmed to fail on the code before its fix. These are individual
+defects; fixing them is not evidence of overall accuracy, which comes only from the M1 evaluation.

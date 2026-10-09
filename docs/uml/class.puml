@@ -23,6 +23,7 @@ package "ViewModel (app/ui)" {
     + choose(id: Int, c: Candidate)
     + noneOfThese(id: Int)
     + keepUnchecked(id: Int)
+    + replace(id: Int, i: Ingredient)
     + save()
   }
   class InteractionViewModel {
@@ -42,7 +43,15 @@ package "Domain (core)" {
   interface LabelParser {
     + parse(ocr: OcrResult) : List<Mention>
   }
-  class LexiconLabelParser
+  class LexiconLabelParser {
+    + segments(ocr: OcrResult) : List<Segment>
+  }
+  enum "LexiconLabelParser.Mode" as Mode {
+    ACTIVE
+    EXCIPIENT
+    WARNING
+    OTHER
+  }
   class HybridLabelParser {
     - primary : LabelParser
     - secondary : LabelParser?
@@ -76,12 +85,21 @@ package "Domain (core)" {
     + verify(dir: File) : KbCheck
   }
   class KbInstaller {
+    - policy : KbPolicy
     + install(zip: InputStream) : InstallResult
     + current() : KbCheck
+  }
+  class KbPolicy {
+    + requireReleaseGrade : Boolean
   }
 }
 
 package "Model (core)" {
+  class TextLine {
+    + text : String
+    + confidence : Float?
+    + block : Int
+  }
   class OcrResult {
     + lines : List<TextLine>
     + meanConfidence : Float?
@@ -140,6 +158,9 @@ package "Model (core)" {
     + releaseId : String
     + compiledAt : String
     + dbSha256 : String
+    + dataStatus : String
+    + unreviewedRows : Int
+    + isReleaseGrade : Boolean
   }
 }
 
@@ -188,6 +209,9 @@ InteractionEngine --> KnowledgeBase
 KnowledgeBase <|.. SqliteKnowledgeBase
 KnowledgeBaseRepository --> KbInstaller
 KbInstaller --> KbVerifier
+KbInstaller --> KbPolicy
+LexiconLabelParser ..> Mode
+OcrResult *-- "0..*" TextLine
 KnowledgeBaseRepository --> "0..1" SqliteKnowledgeBase : opens verified
 
 MlKitOcrService ..> OcrResult : creates
