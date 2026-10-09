@@ -62,6 +62,7 @@ class CaptureViewModel(private val c: AppContainer) : ViewModel() {
                     is RecognitionOutcome.Recognised -> {
                         c.session.items = outcome.items
                         c.session.confidence = outcome.confidence
+                        c.session.readyAtElapsed = SystemClock.elapsedRealtime()
                         CaptureState.Recognised
                     }
                 }

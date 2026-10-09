@@ -145,13 +145,21 @@ never downloads anything itself.
 
 | Command | What it checks |
 |---|---|
-| `./gradlew :core:test` | 39 JVM unit tests: text normalisation, fuzzy matching, parser (incl. excipient filtering), normaliser escalation, ranking, duplicate detection, section-aware parsing, KB signature, checksum, downgrade, tamper and review-status rejection |
+| `./gradlew :core:test` | 39 JVM unit test definitions (see *Verification status* below): text normalisation, fuzzy matching, parser (incl. excipient filtering), normaliser escalation, ranking, duplicate detection, section-aware parsing, KB signature, checksum, downgrade, tamper and review-status rejection |
 | `./gradlew :app:verifyNoNetworkPermissionRelease` | Fails if any network permission survives manifest merging (R1) |
 | `scripts/check_apk_permissions.sh <apk>` | Lists the APK's permissions with `aapt2` and fails on any network permission (R1) |
 | `python kb/build_kb.py && ./gradlew :core:evaluate` | Criteria 4 and 5: normalisation accuracy and detection recall against the compiled KB |
 | `./gradlew :app:connectedDebugAndroidTest` | Criteria 2 and 3 on a device: character accuracy, per-label ingredient recall (with/without LLM), retake handling |
 | scan 30 labels in the app, then `adb pull …/files/eval/timings.csv` | Criterion 8: shutter-to-review and check latency, peak memory (VmHWM) |
 | `./gradlew :app:assembleRelease` | Fails unless the bundled KB was built with `build_kb.py --release` |
+
+### Verification status
+
+- **Implemented and reviewed in source** (two external code reviews).
+- **Core logic: provisionally checked.** The 39 `:core` tests have so far been run only with the Kotlin
+  command-line compiler against a minimal substitute for JUnit (the build environment could not download
+  Gradle dependencies). A normal Gradle/JUnit test report has not yet been produced.
+- **Android integration and device behaviour: not yet verified.** The `:app` module has not yet been compiled.
 
 GitHub Actions runs the unit tests, both manifest checks, the debug APK build and the `aapt2` check on every
 push, and the release gate on `v*` tags.

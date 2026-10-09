@@ -12,7 +12,7 @@ size promised in M1 before reporting results**, and record where every expected 
 | 5 Detection recall | `detection_pairs.csv` (expected values from a source independent of the KB). Headline numbers assume **no** user choice: an ambiguous input counts as unresolved. Reports coverage, covered-pair recall/FP, end-to-end recall; a separate line labelled *assumption* shows the result if the first suggestion were always chosen | 50 + 50 pairs | same |
 | 6 KB integrity | `KbPackageTest` (unit) + manual sideload of a tampered zip | 1 | `./gradlew :core:test` |
 | 7 Severity ranking | `ReasoningTest` + manual check on device | 1 profile | `./gradlew :core:test` |
-| 8 Latency + memory | App log `files/eval/timings.csv`: `recognition_ms` (shutter tap → Review list ready: capture + OCR + parse + normalise) and `check_ms` (evaluate + rank) reported **separately**; `run_index` (1 = cold); `peak_rss_kb` with `peak_scope` (per operation if the kernel peak counter could be reset, otherwise since process start) | 30 camera runs on the named reference device, cold and warm separated | `adb pull /sdcard/Android/data/com.airgaprx.app/files/eval/timings.csv`; report median and max per source; corroborate memory with an Android Studio Profiler capture |
+| 8 Latency + memory | App log `files/eval/timings.csv`: `recognition_ms` (shutter tap → Review list ready: capture + OCR + parse + normalise) and `check_ms` (evaluate + rank) reported **separately**; `run_index` (1 = cold); `peak_rss_kb` with `peak_scope` (per operation if the kernel peak counter could be reset, otherwise since process start) | 30 camera runs on the named reference device, cold and warm separated | `adb pull /sdcard/Android/data/com.airgaprx.app/files/eval/timings.csv`; `python scripts/summarise_timings.py timings.csv` (medians and max per interval, cold vs warm, paired processing time); corroborate memory with an Android Studio Profiler capture |
 | 9 Profile encryption | pull `shelf.db` with `adb` (debug build: `run-as`) and try to open it with `sqlite3` | 1 | see `egress_protocol.md` |
 | 10 Usability | 5 participants, task script + SUS or MARS | 5 | `usability_protocol.md` |
 
@@ -28,7 +28,9 @@ Results are written to `results/` so they can be committed and referenced in the
   sheets or NZ Formulary). Record the source in the `independent_source` column.
 - **Change from M1 for criterion 8.** M1 specified one shutter-to-result time. The Review step between
   recognition and the interaction check is user think-time, so the system is measured as two intervals
-  (recognition, check) and the report states this change. The sum of the two medians is a lower bound on
-  shutter-to-result, not a measurement of it.
+  (recognition, check) and the report states this change. Report the two medians separately. For a
+  combined processing time, `scripts/summarise_timings.py` pairs each recognition with the check that
+  follows it in the same app run, adds each pair, and takes the median of those sums (adding two medians
+  is not valid). User review time (`review_ms`) is reported on its own.
 - Report unknown ingredients and uncovered pairs explicitly. The thresholds are the academic acceptance
   targets set in M1; meeting them does not establish clinical safety.

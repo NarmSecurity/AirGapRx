@@ -87,4 +87,6 @@ data class DomainServices(
 class ScanSession {
     @Volatile var items: List<RecognisedItem> = emptyList()
     @Volatile var confidence: Float? = null
+    /** SystemClock.elapsedRealtime() when the Review list became ready; used to log user review time. */
+    @Volatile var readyAtElapsed: Long? = null
 }

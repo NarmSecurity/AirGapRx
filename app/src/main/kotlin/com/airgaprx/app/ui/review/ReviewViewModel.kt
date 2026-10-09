@@ -76,6 +76,14 @@ class ReviewViewModel(private val c: AppContainer) : ViewModel() {
                     else -> Unit
                 }
             }
+            c.session.readyAtElapsed?.let { ready ->
+                // User review time is reported separately from system latency (criterion 8).
+                com.airgaprx.app.platform.PerfLog.record(
+                    c.context, source = "review", reviewMs = android.os.SystemClock.elapsedRealtime() - ready,
+                    outcome = "${u.rows.count { it.state is RowState.Accepted }} accepted",
+                )
+            }
+            c.session.readyAtElapsed = null
             c.session.items = emptyList()
             _ui.update { it.copy(saved = true) }
         }

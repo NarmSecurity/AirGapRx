@@ -18,8 +18,11 @@ import java.util.concurrent.atomic.AtomicInteger
  *  - source=camera: `recognition_ms` = shutter tap -> Review list ready (camera capture, OCR, parsing,
  *    normalisation). source=gallery has no shutter, so recognition_ms is empty there.
  *  - source=check: `check_ms` = pairwise evaluation + ranking for the whole shelf.
- *  The two are reported separately. M1's "shutter-to-result" also spans the Review step, which is user
- *  think-time, so a single end-to-end number would measure the participant rather than the system.
+ *  - source=review: `review_ms` = Review list ready -> Save tapped (user time, reported separately).
+ *  Recognition and check are reported separately. M1's "shutter-to-result" also spans the Review step,
+ *  which is user time. A combined *processing* time is computed per session by pairing each recognition
+ *  with the check that follows it in the same app run and summing the pair (scripts/summarise_timings.py);
+ *  medians of the separate intervals must not simply be added.
  *  - `run_index`: operations since the process started (1 = cold, first after launch; >1 = warm).
  *  - `peak_rss_kb` with `peak_scope`:
  *      per_operation      the kernel peak-RSS counter (VmHWM) was reset at the start of this operation,
@@ -30,13 +33,18 @@ import java.util.concurrent.atomic.AtomicInteger
 object PerfLog {
     private const val TAG = "AirGapRx.Timing"
     private const val HEADER =
-        "timestamp,source,device,android,total_ram_mb,run_index,process_uptime_ms,recognition_ms,ocr_ms,parse_ms,normalise_ms,check_ms,outcome,peak_rss_kb,peak_scope"
+        "timestamp,session,source,device,android,total_ram_mb,run_index,process_uptime_ms,recognition_ms,ocr_ms,parse_ms,normalise_ms,review_ms,check_ms,outcome,peak_rss_kb,peak_scope"
 
     private val operations = AtomicInteger(0)
 
     data class Operation(val runIndex: Int, val peakScope: String)
 
     @Volatile private var current: Operation? = null
+
+    /** Wall-clock start of this process in seconds: identical for every row from one app run. */
+    private val session: Long by lazy {
+        (System.currentTimeMillis() - (SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime())) / 1000
+    }
 
     /** Reset the kernel's peak-RSS counter for this process. Returns false if not permitted. */
     fun resetPeak(): Boolean = runCatching { File("/proc/self/clear_refs").writeText("5"); true }.getOrDefault(false)
@@ -56,18 +64,22 @@ object PerfLog {
         source: String,
         recognitionMs: Long? = null,
         stages: Map<String, Long> = emptyMap(),
+        reviewMs: Long? = null,
         checkMs: Long? = null,
         outcome: String = "",
     ) {
-        val op = current ?: begin()
+        // Review rows measure user time: they neither consume a run index nor reset the memory peak.
+        val op = current ?: if (source == "review") Operation(operations.get(), "not_measured") else begin()
         current = null
         val am = context.getSystemService(ActivityManager::class.java)
         val totalRamMb = ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }.totalMem / (1024 * 1024)
         val uptime = SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime()
+        // Rows with the same session come from one app run; scripts/summarise_timings.py uses this to pair
+        // a recognition with the check that follows it.
         val row = listOf(
-            System.currentTimeMillis(), source, "${Build.MANUFACTURER} ${Build.MODEL}".replace(',', ' '),
+            System.currentTimeMillis(), session, source, "${Build.MANUFACTURER} ${Build.MODEL}".replace(',', ' '),
             Build.VERSION.RELEASE, totalRamMb, op.runIndex, uptime, recognitionMs ?: "", stages["ocr"] ?: "",
-            stages["parse"] ?: "", stages["normalise"] ?: "", checkMs ?: "", outcome.replace(',', ' '),
+            stages["parse"] ?: "", stages["normalise"] ?: "", reviewMs ?: "", checkMs ?: "", outcome.replace(',', ' '),
             peakRssKb(), op.peakScope,
         ).joinToString(",")
         Log.i(TAG, row)
