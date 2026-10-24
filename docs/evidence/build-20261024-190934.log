@@ -1,0 +1,41 @@
+JAVA_HOME=C:\Program Files\Java\jdk-21
+
+> Configure project :app
+e: file:///C:/Users/hosse/Desktop/AirGapRx/app/build.gradle.kts:146:26: Unresolved reference: util
+e: file:///C:/Users/hosse/Desktop/AirGapRx/app/build.gradle.kts:147:14: Unresolved reference: util
+e: file:///C:/Users/hosse/Desktop/AirGapRx/app/build.gradle.kts:147:49: Cannot infer a type for this parameter. Please specify it explicitly.
+w: file:///C:/Users/hosse/Desktop/AirGapRx/app/build.gradle.kts:148:13: Unreachable code
+w: file:///C:/Users/hosse/Desktop/AirGapRx/app/build.gradle.kts:148:17: Variable 'entry' is never used
+w: file:///C:/Users/hosse/Desktop/AirGapRx/app/build.gradle.kts:149:13: Unreachable code
+e: file:///C:/Users/hosse/Desktop/AirGapRx/app/build.gradle.kts:149:54: Expression expected, but a package name found
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Build file 'C:\Users\hosse\Desktop\AirGapRx\app\build.gradle.kts' line: 146
+
+* What went wrong:
+Script compilation errors:
+
+  Line 146:         val props = java.util.Properties()
+                                     ^ Unresolved reference: util
+
+  Line 147:         java.util.zip.ZipFile(zip.asFile).use { z ->
+                         ^ Unresolved reference: util
+
+  Line 147:         java.util.zip.ZipFile(zip.asFile).use { z ->
+                                                            ^ Cannot infer a type for this parameter. Please specify it explicitly.
+
+  Line 149:             z.getInputStream(entry).use { props.load(it) }
+                                                                 ^ Expression expected, but a package name found
+
+4 errors
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 6s
+EXIT=1

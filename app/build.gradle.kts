@@ -1,3 +1,5 @@
+import java.util.Properties
+import java.util.zip.ZipFile
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -143,8 +145,8 @@ val verifyBundledKbIsRelease = tasks.register("verifyBundledKbIsRelease") {
     description = "Fails unless the bundled KB was built with build_kb.py --release."
     val zip = layout.projectDirectory.file("src/main/assets/kb/airgaprx-kb.zip")
     doLast {
-        val props = java.util.Properties()
-        java.util.zip.ZipFile(zip.asFile).use { z ->
+        val props = Properties()
+        ZipFile(zip.asFile).use { z ->
             val entry = z.getEntry("kb.manifest.properties") ?: throw GradleException("KB package has no manifest")
             z.getInputStream(entry).use { props.load(it) }
         }

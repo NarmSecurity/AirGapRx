@@ -163,7 +163,12 @@ never downloads anything itself.
   `--configure-on-demand` because the Android SDK was not yet installed, so `:app` was not configured. The
   same 39 tests had passed earlier with a JUnit substitute
   ([`docs/evidence/core-tests-eecc9f0.txt`](docs/evidence/core-tests-eecc9f0.txt)).
-- **Android integration and device behaviour: not yet verified.** The `:app` module has not yet been compiled.
+- **Android build: compiles.** The debug APK built on 24 Oct 2026 with JDK 21 and the Android SDK
+  command-line tools ([log](docs/evidence/build-20261024-191001.log)). The merged-manifest check and the
+  `aapt2` check both found no network permission; the APK declares only `CAMERA` and the app's own
+  receiver permission ([aapt2 output](docs/evidence/apk-permissions-debug-20261024-191315.txt)). The
+  release APK has not been built.
+- **Device behaviour: not yet verified.** The app has not yet been run on a phone.
 
 GitHub Actions runs the unit tests, both manifest checks, the debug APK build and the `aapt2` check on every
 push, and the release gate on `v*` tags.

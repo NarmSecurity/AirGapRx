@@ -67,6 +67,7 @@ evidence does not exist yet; it must not be presented as done.
 | Parsing stopped at the first excipient header, so actives read later were lost | External code review | Section modes that switch at headers and reset at OCR block boundaries | `LabelParserTest.activesAfterExcipientSectionInSameBlockAreKept`, `newOcrBlockEndsAnExcipientSection` |
 | Warning text added other medicines to the product | Found while fixing the above | WARNING mode | `LabelParserTest.warningTextDoesNotAddOtherMedicines` |
 | A correctly signed *development* KB could be packaged in a release APK | External code review | Review status in the signed manifest; release policy at runtime; Gradle release gate | `KbPackageTest.releasePolicyRejectsSignedDevelopmentData` |
+| `app/build.gradle.kts` did not compile: in the release-gate task, `java` in `java.util.Properties` and `java.util.zip.ZipFile` resolved to a Gradle DSL accessor, not the package ("Unresolved reference: util") | First Gradle build (`docs/evidence/build-20261024-190934.log`) | Import both classes at the top of the script | The next build compiled the script and assembled the debug APK (`build-20261024-191001.log`) |
 
 Each regression test above was confirmed to fail on the code before its fix and pass after it. Method
 disclosure: these before-and-after runs used the Kotlin command-line compiler with a minimal substitute for
