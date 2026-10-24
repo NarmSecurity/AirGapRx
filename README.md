@@ -137,7 +137,7 @@ never downloads anything itself.
 1. **My medicines** is the home screen. Tap **Scan a label**.
 2. Fill the frame with the ingredients panel and tap the shutter. You can also choose a photo, or add a medicine by name.
 3. **Check what was read**: confirm each ingredient, choose the right one where the app isn't sure, and decide what to do with anything not in the knowledge base. Saving stays disabled until every item is resolved.
-4. Add all your products, then tap **Check interactions**.
+4. Add all your products, then tap **Check *n* medicines for interactions** (it appears once the shelf has two).
 5. Major interactions show a dialog first. Tap any result to see why it happens, what to do, and where the information comes from.
 6. **ⓘ** shows the knowledge-base version and checksum, confirms the app has no network permission, and lets you install a KB update from a file.
 
@@ -222,6 +222,8 @@ The repository includes a **development KB**. Its drug–drug pairs come from a 
 ## Licence and acknowledgements
 
 Code: MIT. Compiled knowledge-base data that includes DDInter: CC BY-NC-SA 4.0 (non-commercial).
+Typeface: Atkinson Hyperlegible, © 2020 Braille Institute of America, SIL Open Font License 1.1
+(`app/src/main/assets/licences/AtkinsonHyperlegible-OFL.txt`), bundled in the APK.
 
 Built by Hossein Mohseni Mofrad for COMP826 Mobile Systems Development, Auckland University of Technology.
 Claude (Anthropic) was used as a coding assistant. See the AI-use statement in the report.

@@ -2,6 +2,7 @@ package com.airgaprx.app.ui.results
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -22,7 +23,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.airgaprx.app.AirGapApp
 import com.airgaprx.app.data.KbState
-import com.airgaprx.app.ui.common.KindChip
+import com.airgaprx.app.ui.common.KindLine
+import com.airgaprx.app.ui.common.PrintedLabel
 import com.airgaprx.app.ui.common.SeverityChip
 import com.airgaprx.core.model.AlertType
 
@@ -46,24 +48,28 @@ fun AlertDetailScreen(index: Int, onBack: () -> Unit) {
         if (alert == null || explanation == null) {
             Text("This result is no longer available.", Modifier.padding(padding).padding(16.dp))
         } else Column(
-            Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             SeverityChip(alert.severity)
-            Text(explanation.headline, style = MaterialTheme.typography.headlineSmall)
+            Text(explanation.headline, style = MaterialTheme.typography.headlineMedium)
             if (alert.type == AlertType.INTERACTION) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("${alert.first.name}"); KindChip(alert.first.kind)
-                    Text("${alert.second.name}"); KindChip(alert.second.kind)
+                PrintedLabel(Modifier.fillMaxWidth()) {
+                    Text(alert.first.name, style = MaterialTheme.typography.titleMedium)
+                    KindLine(alert.first.kind)
+                    HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                    Text(alert.second.name, style = MaterialTheme.typography.titleMedium)
+                    KindLine(alert.second.kind)
                 }
             }
             Text(explanation.summary, style = MaterialTheme.typography.bodyLarge)
             Section("Why it happens", explanation.mechanism ?: "The source records the interaction but does not describe the mechanism.")
             Section("What to do", explanation.management ?: "Ask your pharmacist or prescriber whether these can be taken together.")
-            HorizontalDivider()
-            Text("Where this comes from", style = MaterialTheme.typography.titleSmall)
-            explanation.provenance.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
-            HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Where this comes from", style = MaterialTheme.typography.titleSmall)
+                explanation.provenance.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
+            }
             Text(explanation.disclaimer, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -71,8 +77,8 @@ fun AlertDetailScreen(index: Int, onBack: () -> Unit) {
 
 @Composable
 private fun Section(title: String, body: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.titleSmall)
-        Text(body, style = MaterialTheme.typography.bodyMedium)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(body, style = MaterialTheme.typography.bodyLarge)
     }
 }

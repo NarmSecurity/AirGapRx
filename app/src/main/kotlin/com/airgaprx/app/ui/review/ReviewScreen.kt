@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,9 +20,8 @@ import androidx.compose.material.icons.outlined.HelpCenter
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +29,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -42,8 +44,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.airgaprx.app.ui.common.KindChip
+import com.airgaprx.app.ui.common.KindLine
+import com.airgaprx.app.ui.common.PrintedLabel
 import com.airgaprx.app.ui.common.appViewModel
+import com.airgaprx.app.ui.common.kindDescription
+import com.airgaprx.core.model.Candidate
 import com.airgaprx.core.model.MentionSource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,12 +68,18 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
             )
         },
         bottomBar = {
-            Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                if (ui.pendingCount > 0) Text(
-                    "${ui.pendingCount} item(s) need your decision before saving.",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
-                )
-                Button(onClick = vm::save, enabled = ui.canSave, modifier = Modifier.fillMaxWidth()) { Text("Add to my medicines") }
+            Surface(color = MaterialTheme.colorScheme.surface) {
+                Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (ui.pendingCount > 0) Text(
+                            if (ui.pendingCount == 1) "1 item needs your decision before saving."
+                            else "${ui.pendingCount} items need your decision before saving.",
+                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error,
+                        )
+                        Button(onClick = vm::save, enabled = ui.canSave, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Add to my medicines") }
+                    }
+                }
             }
         },
     ) { padding ->
@@ -99,9 +110,11 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
 
 @Composable
 private fun RowCard(row: ReviewRow, vm: ReviewViewModel, onChange: () -> Unit) {
-    val pendingColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-    Card(Modifier.fillMaxWidth(), colors = if (row.pending) pendingColors else CardDefaults.cardColors()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    PrintedLabel(
+        Modifier.fillMaxWidth(),
+        color = if (row.pending) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerLowest,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 "Read as \"${row.mention.text}\"" + if (row.mention.source == MentionSource.LLM) " (language model)" else "",
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -110,8 +123,8 @@ private fun RowCard(row: ReviewRow, vm: ReviewViewModel, onChange: () -> Unit) {
                 is RowState.Accepted -> Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
                     Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                        Text(s.ingredient.name, style = MaterialTheme.typography.titleMedium)
-                        KindChip(s.ingredient.kind)
+                        Text(s.ingredient.name, style = MaterialTheme.typography.titleLarge)
+                        KindLine(s.ingredient.kind)
                         // Fuzzy (non-exact) and model-proposed matches are accepted provisionally; say so.
                         if (s.score < 1.0 || row.mention.source == MentionSource.LLM) Text(
                             "Matched approximately. Check this is right.",
@@ -129,7 +142,7 @@ private fun RowCard(row: ReviewRow, vm: ReviewViewModel, onChange: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(selected = false, onClick = null)
-                            Text("${c.ingredient.name} · ${c.ingredient.kind.label}", Modifier.padding(start = 8.dp))
+                            CandidateText(c, Modifier.padding(start = 8.dp, top = 6.dp, bottom = 6.dp))
                         }
                     }
                     TextButton(onClick = { vm.noneOfThese(row.id) }) { Text("None of these") }
@@ -165,10 +178,24 @@ private fun SearchDialog(vm: ReviewViewModel, onPick: (com.airgaprx.core.model.I
             Column {
                 OutlinedTextField(query, { query = it }, singleLine = true, label = { Text("Name or brand") })
                 results.forEach { c ->
-                    TextButton(onClick = { onPick(c.ingredient); onDismiss() }) { Text("${c.ingredient.name} · ${c.ingredient.kind.label}") }
+                    CandidateText(
+                        c,
+                        Modifier.fillMaxWidth()
+                            .selectable(selected = false, role = Role.Button) { onPick(c.ingredient); onDismiss() }
+                            .padding(vertical = 8.dp),
+                    )
                 }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
+}
+
+/** A knowledge-base match as name over type, the way a dispensing label prints it. */
+@Composable
+private fun CandidateText(c: Candidate, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(c.ingredient.name, style = MaterialTheme.typography.titleSmall)
+        Text(kindDescription(c.ingredient.kind), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }

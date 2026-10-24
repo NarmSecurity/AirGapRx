@@ -12,7 +12,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,6 +23,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -34,6 +34,7 @@ import com.airgaprx.app.data.KbState
 import com.airgaprx.app.platform.EgressGuard
 import com.airgaprx.app.ui.common.Disclaimer
 import com.airgaprx.app.ui.common.OfflineBadge
+import com.airgaprx.app.ui.common.PrintedLabel
 import com.airgaprx.app.ui.common.appViewModel
 
 /** Knowledge base, privacy and diagnostics screen (M1 "knowledge base screen", R1/R4/R7). */
@@ -63,8 +64,8 @@ fun AboutScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             message?.let {
-                Card(Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(12.dp)) {
+                PrintedLabel(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(it, Modifier.weight(1f)); TextButton(onClick = vm::clearMessage) { Text("OK") }
                     }
                 }
@@ -137,9 +138,9 @@ fun AboutScreen(onBack: () -> Unit) {
 
 @Composable
 private fun Block(title: String, content: @Composable () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+    PrintedLabel(Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge)
             content()
         }
     }
@@ -147,5 +148,8 @@ private fun Block(title: String, content: @Composable () -> Unit) {
 
 @Composable
 private fun Field(label: String, value: String) {
-    Row { Text("$label: ", style = MaterialTheme.typography.labelMedium); Text(value, style = MaterialTheme.typography.bodySmall) }
+    Row {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(0.45f))
+        Text(value, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(0.55f))
+    }
 }

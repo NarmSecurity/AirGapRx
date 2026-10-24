@@ -1,7 +1,5 @@
 package com.airgaprx.app.ui.results
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,18 +13,14 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,14 +32,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.airgaprx.app.ui.common.DevDataBanner
 import com.airgaprx.app.ui.common.Disclaimer
+import com.airgaprx.app.ui.common.PrintedLabel
 import com.airgaprx.app.ui.common.SeverityChip
 import com.airgaprx.app.ui.common.appViewModel
-import com.airgaprx.app.ui.common.style
-import com.airgaprx.app.ui.theme.SeverityColors
+import com.airgaprx.app.ui.common.plural
 import com.airgaprx.core.model.Alert
 import com.airgaprx.core.model.AlertType
 import com.airgaprx.core.model.Severity
@@ -77,12 +72,16 @@ fun ResultsScreen(onBack: () -> Unit, onOpenAlert: (Int) -> Unit) {
         val majors = done.alerts.filter { it.interruptive }
         AlertDialog(
             onDismissRequest = {},
-            icon = { Icon(Icons.Outlined.ErrorOutline, null, tint = SeverityColors.major) },
             title = { Text(if (majors.size == 1) "Major interaction found" else "${majors.size} major interactions found") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    majors.forEach { Text("• ${it.first.name} + ${it.second.name}", style = MaterialTheme.typography.titleSmall) }
-                    Text("Do not stop or change any medicine on your own. Talk to your pharmacist or prescriber.")
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    majors.forEach {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            SeverityChip(it.severity)
+                            Text("${it.first.name} + ${it.second.name}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                    Text("Do not stop or change any medicine on your own. Talk to your pharmacist or prescriber.", style = MaterialTheme.typography.bodyLarge)
                 }
             },
             confirmButton = { Button(onClick = vm::acknowledge) { Text("I understand") } },
@@ -98,42 +97,34 @@ private fun DoneContent(s: ResultsUi.Done, modifier: Modifier, onOpenAlert: (Int
     val minor = s.alerts.withIndex().filter { it.value.severity in nonInterruptiveLow }
 
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { DevDataBanner(s.kb, Modifier.fillMaxWidth()) }
-        item {
-            Text(
-                "Checked ${s.checkedCount} ingredient(s) against knowledge base ${s.kb.releaseId}.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-        if (s.alerts.isEmpty()) item { NoInteractionsCard() }
+        item { Verdict(s) }
+        item { DevDataBanner(s.kb, Modifier.fillMaxWidth().padding(bottom = 6.dp)) }
 
-        itemsIndexed(main, key = { _, iv -> "m${iv.index}" }) { _, iv -> AlertCard(iv.value) { onOpenAlert(iv.index) } }
+        itemsIndexed(main, key = { _, iv -> "m${iv.index}" }) { _, iv -> AlertRow(iv.value) { onOpenAlert(iv.index) } }
 
         if (minor.isNotEmpty()) {
             item {
                 TextButton(onClick = { showMinor = !showMinor }) {
-                    Text(if (showMinor) "Hide ${minor.size} minor" else "Show ${minor.size} minor interaction(s)")
+                    Text(if (showMinor) "Hide ${minor.size} minor" else "Show ${plural(minor.size, "minor interaction")}")
                 }
             }
-            if (showMinor) itemsIndexed(minor, key = { _, iv -> "n${iv.index}" }) { _, iv -> AlertCard(iv.value) { onOpenAlert(iv.index) } }
+            if (showMinor) itemsIndexed(minor, key = { _, iv -> "n${iv.index}" }) { _, iv -> AlertRow(iv.value) { onOpenAlert(iv.index) } }
         }
 
         if (s.unchecked.isNotEmpty()) item {
-            OutlinedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp)) {
-                    Text("Not checked", style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        s.unchecked.joinToString { it.displayName } +
-                            " — not in the knowledge base, so interactions involving them are unknown.",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+            PrintedLabel(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                Text("Not checked", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    s.unchecked.joinToString { it.displayName } +
+                        " is not in the knowledge base, so its interactions are unknown.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
         }
 
         item {
-            HorizontalDivider()
-            Text("Sources: " + s.kb.sources.joinToString("; "), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+            HorizontalDivider(Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Text("Sources: " + s.kb.sources.joinToString("; "), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp))
             Disclaimer(Modifier.padding(top = 8.dp))
             Text(
                 "Evaluated on-device in ${s.timings.totalMs} ms",
@@ -144,41 +135,49 @@ private fun DoneContent(s: ResultsUi.Done, modifier: Modifier, onOpenAlert: (Int
     }
 }
 
+/** The answer first, in words: how many interactions there are to raise with a pharmacist. */
 @Composable
-private fun AlertCard(alert: Alert, onClick: () -> Unit) {
-    val st = alert.severity.style()
-    Card(
-        Modifier.fillMaxWidth().clickable(onClick = onClick),
-    ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                SeverityChip(alert.severity)
-                Text(
-                    if (alert.type == AlertType.DUPLICATE_INGREDIENT) "${alert.first.name} in more than one product"
-                    else "${alert.first.name} + ${alert.second.name}",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                alert.evidence.firstOrNull()?.mechanism?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2)
-                }
-            }
-            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, "Details", tint = st.fg)
-        }
+private fun Verdict(s: ResultsUi.Done) {
+    Column(Modifier.padding(top = 4.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val n = s.alerts.size
+        Text(
+            when (n) {
+                0 -> "No interactions found in the offline knowledge base"
+                1 -> "1 interaction to discuss with your pharmacist"
+                else -> "$n interactions to discuss with your pharmacist"
+            },
+            style = MaterialTheme.typography.displaySmall,
+        )
+        if (n == 0) Text(
+            "This doesn't prove there is no interaction. The knowledge base doesn't cover everything.",
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Text(
+            "Checked ${plural(s.checkedCount, "ingredient")} against knowledge base ${s.kb.releaseId}.",
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
 @Composable
-private fun NoInteractionsCard() {
-    OutlinedCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.TaskAlt, null, tint = MaterialTheme.colorScheme.primary)
-            Column(Modifier.padding(start = 12.dp)) {
-                Text("No interactions found in the offline knowledge base", style = MaterialTheme.typography.titleSmall)
+private fun AlertRow(alert: Alert, onClick: () -> Unit) {
+    PrintedLabel(Modifier.fillMaxWidth(), onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SeverityChip(alert.severity)
                 Text(
-                    "This doesn't prove there is no interaction. The knowledge base doesn't cover everything.",
-                    style = MaterialTheme.typography.bodySmall,
+                    if (alert.type == AlertType.DUPLICATE_INGREDIENT) "${alert.first.name} in more than one product"
+                    else "${alert.first.name} + ${alert.second.name}",
+                    style = MaterialTheme.typography.titleLarge,
                 )
+                alert.evidence.firstOrNull()?.mechanism?.let {
+                    Text(
+                        it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, "Details", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
