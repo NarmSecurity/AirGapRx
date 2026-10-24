@@ -69,7 +69,9 @@ evidence does not exist yet; it must not be presented as done.
 | A correctly signed *development* KB could be packaged in a release APK | External code review | Review status in the signed manifest; release policy at runtime; Gradle release gate | `KbPackageTest.releasePolicyRejectsSignedDevelopmentData` |
 
 Each regression test above was confirmed to fail on the code before its fix and pass after it. Method
-disclosure: these runs used the Kotlin command-line compiler with a minimal substitute for JUnit, because
-the development environment could not download Gradle dependencies; they are provisional until reproduced
-in a normal Gradle/JUnit run. These are individual
+disclosure: these before-and-after runs used the Kotlin command-line compiler with a minimal substitute for
+JUnit, because the development environment could not download Gradle dependencies, so the "fails before"
+half remains provisional. The "passes after" half is verified under Gradle: all 39 `:core` tests passed
+with Gradle 8.11.1 and JUnit 4.13.2 on JDK 21 at `eecc9f0` on 24 Oct 2026
+(`docs/evidence/core-test-gradle-20261024-185955.log`). These are individual
 defects; fixing them is not evidence of overall accuracy, which comes only from the M1 evaluation.

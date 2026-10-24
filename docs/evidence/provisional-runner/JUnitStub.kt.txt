@@ -1,0 +1,12 @@
+// Minimal substitute for JUnit 4 (Maven Central is unreachable from this sandbox). Provisional evidence only.
+package org.junit
+@Retention(AnnotationRetention.RUNTIME) @Target(AnnotationTarget.FUNCTION) annotation class Test
+object Assert {
+    @JvmStatic fun assertEquals(expected: Any?, actual: Any?) { if (expected != actual) throw AssertionError("expected:<$expected> but was:<$actual>") }
+    @JvmStatic fun assertEquals(message: String?, expected: Any?, actual: Any?) { if (expected != actual) throw AssertionError("$message expected:<$expected> but was:<$actual>") }
+    @JvmStatic fun assertEquals(expected: Double, actual: Double, delta: Double) { if (Math.abs(expected - actual) > delta) throw AssertionError("expected:<$expected> but was:<$actual>") }
+    @JvmStatic fun assertTrue(condition: Boolean) { if (!condition) throw AssertionError("expected true") }
+    @JvmStatic fun assertTrue(message: String?, condition: Boolean) { if (!condition) throw AssertionError(message) }
+    @JvmStatic fun assertFalse(condition: Boolean) { if (condition) throw AssertionError("expected false") }
+    @JvmStatic fun assertFalse(message: String?, condition: Boolean) { if (condition) throw AssertionError(message) }
+}

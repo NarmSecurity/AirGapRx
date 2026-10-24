@@ -1,0 +1,45 @@
+# :core unit tests, commit eecc9f0f9efc0a7ac4c97f3513b39377bb057ffa, run 2026-10-23
+# Method: kotlin-compiler-embeddable 2.0.21 (from Gradle 8.14.3 lib), -jvm-target 17, OpenJDK 21 in a cloud sandbox.
+# JUnit 4 replaced by a minimal substitute (org.junit.Test + Assert.assertEquals/True/False) and a reflection runner,
+# because Maven Central and Google Maven were unreachable (HTTP 403 from the proxy). PROVISIONAL until a Gradle :core:test run.
+
+PASS IngredientNormaliserTest.ambiguousItemIsKeptEvenIfAnOptionIsAlreadyResolved
+PASS IngredientNormaliserTest.duplicatesCollapse
+PASS IngredientNormaliserTest.exactSynonymIsResolved
+PASS IngredientNormaliserTest.nearMissEscalatesInsteadOfGuessing
+PASS IngredientNormaliserTest.unknownIngredientIsEscalated
+PASS KbPackageTest.corruptedChecksumIsRejectedAndPriorRetained
+PASS KbPackageTest.developmentDataStillLoadsInDebugPolicy
+PASS KbPackageTest.downgradeIsRejected
+PASS KbPackageTest.onDiskTamperingIsDetected
+PASS KbPackageTest.releasePolicyRejectsSignedDevelopmentData
+PASS KbPackageTest.unexpectedFileIsRejected
+PASS KbPackageTest.untrustedSignerIsRejected
+PASS KbPackageTest.validPackageInstalls
+PASS LabelParserTest.activesAfterExcipientSectionInSameBlockAreKept
+PASS LabelParserTest.containsInsideWarningDoesNotReopenActivePanel
+PASS LabelParserTest.excipientsDoNotRaiseMineralMentions
+PASS LabelParserTest.findsKnownAndUnknownActives
+PASS LabelParserTest.genericHeaderMidSentenceIsNotAPanel
+PASS LabelParserTest.headerAtLineStartAfterWarningStartsNewPanel
+PASS LabelParserTest.hybridParserSurvivesModelFailure
+PASS LabelParserTest.inlineExcipientPhraseIsIgnored
+PASS LabelParserTest.multiLinePanelWithSeveralActivesUnknownsAndMisspellings
+PASS LabelParserTest.newOcrBlockEndsAnExcipientSection
+PASS LabelParserTest.spotsBrandOnFrontOfPack
+PASS LabelParserTest.toleratesOcrErrorInDrugName
+PASS LabelParserTest.warningTextDoesNotAddOtherMedicines
+PASS LexiconTest.brandNameResolvesExactly
+PASS LexiconTest.ocrErrorIsMatchedFuzzily
+PASS LexiconTest.shortStringsAreExactOnly
+PASS ReasoningTest.detectsDuplicateIngredientAcrossProducts
+PASS ReasoningTest.explanationCarriesProvenanceAndDisclaimer
+PASS ReasoningTest.noInteractionsIsAnExplicitEmptyResult
+PASS ReasoningTest.ranksBySeverityAndMarksOnlyMajorInterruptive
+PASS RecognitionPipelineTest.blankCaptureAsksForRetake
+PASS RecognitionPipelineTest.goodCaptureProducesReviewItemsAndTimings
+PASS RecognitionPipelineTest.lowConfidenceCaptureAsksForRetake
+PASS TextTest.editDistanceHandlesTransposition
+PASS TextTest.normaliseStripsPunctuationAccentsAndApostrophes
+PASS TextTest.stripDosesRemovesAmountsButKeepsNumericNames
+TOTAL pass=39 fail=0

@@ -1,0 +1,15 @@
+package stubrunner
+import java.io.File
+fun main(args: Array<String>) {
+    val root = File(args[0]); var pass = 0; var fail = 0
+    root.walk().filter { it.name.endsWith(".class") && !it.name.contains('$') }.sortedBy { it.path }.forEach { f ->
+        val name = f.relativeTo(root).path.removeSuffix(".class").replace('/', '.')
+        val c = try { Class.forName(name) } catch (e: Throwable) { return@forEach }
+        c.declaredMethods.filter { m -> m.annotations.any { it.annotationClass.qualifiedName == "org.junit.Test" } }.sortedBy { it.name }.forEach { m ->
+            try { m.invoke(c.getDeclaredConstructor().newInstance()); pass++; println("PASS ${c.simpleName}.${m.name}") }
+            catch (e: java.lang.reflect.InvocationTargetException) { fail++; println("FAIL ${c.simpleName}.${m.name}: ${e.targetException}") }
+        }
+    }
+    println("TOTAL pass=$pass fail=$fail")
+    if (fail > 0) System.exit(1)
+}

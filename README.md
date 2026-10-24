@@ -156,9 +156,13 @@ never downloads anything itself.
 ### Verification status
 
 - **Implemented and reviewed in source** (two external code reviews).
-- **Core logic: provisionally checked.** The 39 `:core` tests have so far been run only with the Kotlin
-  command-line compiler against a minimal substitute for JUnit (the build environment could not download
-  Gradle dependencies). A normal Gradle/JUnit test report has not yet been produced.
+- **Core logic: verified under Gradle.** `./gradlew :core:test` passed 39/39 (0 failures, 0 skipped) with
+  Gradle 8.11.1 and JUnit 4.13.2 on JDK 21, on commit `eecc9f0`, 24 Oct 2026
+  ([log](docs/evidence/core-test-gradle-20261024-185955.log),
+  [HTML report](docs/evidence/core-test-report-20261024-185955/index.html)). It was run with
+  `--configure-on-demand` because the Android SDK was not yet installed, so `:app` was not configured. The
+  same 39 tests had passed earlier with a JUnit substitute
+  ([`docs/evidence/core-tests-eecc9f0.txt`](docs/evidence/core-tests-eecc9f0.txt)).
 - **Android integration and device behaviour: not yet verified.** The `:app` module has not yet been compiled.
 
 GitHub Actions runs the unit tests, both manifest checks, the debug APK build and the `aapt2` check on every
