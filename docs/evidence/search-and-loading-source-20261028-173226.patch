@@ -1,0 +1,206 @@
+diff --git a/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewViewModel.kt b/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewViewModel.kt
+index 4cec1e3..4759fcc 100644
+--- a/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewViewModel.kt
++++ b/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewViewModel.kt
+@@ -53,7 +53,7 @@ class ReviewViewModel(private val c: AppContainer) : ViewModel() {
+     fun setProduct(name: String) = _ui.update { it.copy(product = name) }
+ 
+     fun search(query: String): List<Candidate> =
+-        if (query.trim().length < 2) emptyList() else c.services()?.lexicon?.lookup(query, minScore = 0.6, limit = 6).orEmpty()
++        if (query.trim().length < 2) emptyList() else c.services()?.lexicon?.search(query, limit = 6).orEmpty()
+ 
+     /** User correction of an accepted row (e.g. a fuzzy match that picked the wrong ingredient). */
+     fun replace(id: Int, ingredient: Ingredient) = set(id, RowState.Accepted(ingredient, 1.0))
+diff --git a/app/src/main/kotlin/com/airgaprx/app/ui/shelf/ShelfScreen.kt b/app/src/main/kotlin/com/airgaprx/app/ui/shelf/ShelfScreen.kt
+index cb7bf3d..99d9940 100644
+--- a/app/src/main/kotlin/com/airgaprx/app/ui/shelf/ShelfScreen.kt
++++ b/app/src/main/kotlin/com/airgaprx/app/ui/shelf/ShelfScreen.kt
+@@ -169,13 +169,20 @@ private fun ShelfLabel(row: ShelfRow, onRemove: () -> Unit) {
+             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                 Text(row.ingredient?.name ?: row.item.displayName, style = MaterialTheme.typography.titleLarge)
+                 row.item.productName?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+-                if (row.ingredient == null) {
+-                    Text(
++                when (row.status) {
++                    RowStatus.KNOWN -> KindLine(row.ingredient?.kind)
++                    RowStatus.CHECKING -> Text(
++                        "Loading the knowledge base…",
++                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
++                    )
++                    RowStatus.KB_UNAVAILABLE -> Text(
++                        "Can't be checked while the knowledge base is unavailable",
++                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
++                    )
++                    RowStatus.NOT_IN_KB -> Text(
+                         "Not in the knowledge base, so it can't be checked",
+                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
+                     )
+-                } else {
+-                    KindLine(row.ingredient.kind)
+                 }
+             }
+             IconButton(onClick = onRemove) {
+diff --git a/app/src/main/kotlin/com/airgaprx/app/ui/shelf/ShelfViewModel.kt b/app/src/main/kotlin/com/airgaprx/app/ui/shelf/ShelfViewModel.kt
+index 9ce4ec4..bc5376c 100644
+--- a/app/src/main/kotlin/com/airgaprx/app/ui/shelf/ShelfViewModel.kt
++++ b/app/src/main/kotlin/com/airgaprx/app/ui/shelf/ShelfViewModel.kt
+@@ -13,7 +13,22 @@ import kotlinx.coroutines.flow.combine
+ import kotlinx.coroutines.flow.stateIn
+ import kotlinx.coroutines.launch
+ 
+-data class ShelfRow(val item: ShelfItem, val ingredient: Ingredient?)
++data class ShelfRow(val item: ShelfItem, val ingredient: Ingredient?, val status: RowStatus)
++
++/** What a shelf row can say about its medicine. */
++enum class RowStatus { KNOWN, CHECKING, KB_UNAVAILABLE, NOT_IN_KB }
++
++/**
++ * A saved ingredient can only be looked up once the KB is ready, so a missing ingredient means
++ * "not in the knowledge base" only then. Items saved without an ingredient are never in it.
++ */
++fun rowStatus(kb: KbState, item: ShelfItem, ingredient: Ingredient?): RowStatus = when {
++    ingredient != null -> RowStatus.KNOWN
++    item.ingredientId == null -> RowStatus.NOT_IN_KB
++    kb is KbState.Loading -> RowStatus.CHECKING
++    kb is KbState.Failed -> RowStatus.KB_UNAVAILABLE
++    else -> RowStatus.NOT_IN_KB
++}
+ 
+ data class ShelfUiState(
+     val kb: KbState = KbState.Loading,
+@@ -26,7 +41,10 @@ class ShelfViewModel(private val c: AppContainer) : ViewModel() {
+     val state: StateFlow<ShelfUiState> =
+         combine(c.kbRepository.state, c.medicationRepository.items) { kb, items ->
+             val base = (kb as? KbState.Ready)?.kb
+-            ShelfUiState(kb, items.map { ShelfRow(it, it.ingredientId?.let { id -> base?.ingredient(id) }) })
++            ShelfUiState(kb, items.map {
++                val ingredient = it.ingredientId?.let { id -> base?.ingredient(id) }
++                ShelfRow(it, ingredient, rowStatus(kb, it, ingredient))
++            })
+         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ShelfUiState())
+ 
+     init {
+@@ -36,7 +54,7 @@ class ShelfViewModel(private val c: AppContainer) : ViewModel() {
+     /** Manual entry path (also the fallback when a label cannot be scanned). */
+     fun search(query: String): List<Candidate> =
+         if (query.trim().length < 2) emptyList()
+-        else c.services()?.lexicon?.lookup(query, minScore = 0.6, limit = 8).orEmpty()
++        else c.services()?.lexicon?.search(query, limit = 8).orEmpty()
+ 
+     fun add(ingredient: Ingredient, product: String?) = viewModelScope.launch {
+         c.medicationRepository.add(ingredient.id, ingredient.name, product)
+diff --git a/app/src/test/kotlin/com/airgaprx/app/ui/shelf/ShelfRowStatusTest.kt b/app/src/test/kotlin/com/airgaprx/app/ui/shelf/ShelfRowStatusTest.kt
+new file mode 100644
+index 0000000..da55b72
+--- /dev/null
++++ b/app/src/test/kotlin/com/airgaprx/app/ui/shelf/ShelfRowStatusTest.kt
+@@ -0,0 +1,31 @@
++package com.airgaprx.app.ui.shelf
++
++import com.airgaprx.app.data.KbState
++import com.airgaprx.app.data.ShelfItem
++import com.airgaprx.core.model.Ingredient
++import com.airgaprx.core.model.IngredientKind
++import org.junit.Assert.assertEquals
++import org.junit.Test
++
++class ShelfRowStatusTest {
++    private val warfarin = Ingredient("warfarin", "Warfarin", IngredientKind.PRESCRIPTION)
++    private val saved = ShelfItem(1, "warfarin", "Warfarin", null, 0)
++    private val unknown = ShelfItem(2, null, "Ashwagandha", null, 0)
++
++    /** Emulator finding: after a cold start every row said "Not in the knowledge base" until the KB loaded. */
++    @Test fun knownItemIsCheckingWhileKbLoads() {
++        assertEquals(RowStatus.CHECKING, rowStatus(KbState.Loading, saved, ingredient = null))
++    }
++
++    @Test fun knownItemCannotBeCheckedWhenKbFailed() {
++        assertEquals(RowStatus.KB_UNAVAILABLE, rowStatus(KbState.Failed("bad signature"), saved, ingredient = null))
++    }
++
++    @Test fun itemSavedWithoutAnIngredientIsNotInKb() {
++        assertEquals(RowStatus.NOT_IN_KB, rowStatus(KbState.Loading, unknown, ingredient = null))
++    }
++
++    @Test fun resolvedItemIsKnown() {
++        assertEquals(RowStatus.KNOWN, rowStatus(KbState.Loading, saved, warfarin))
++    }
++}
+diff --git a/core/src/main/kotlin/com/airgaprx/core/normalise/Lexicon.kt b/core/src/main/kotlin/com/airgaprx/core/normalise/Lexicon.kt
+index d1b029b..bef6fa8 100644
+--- a/core/src/main/kotlin/com/airgaprx/core/normalise/Lexicon.kt
++++ b/core/src/main/kotlin/com/airgaprx/core/normalise/Lexicon.kt
+@@ -77,4 +77,40 @@ class Lexicon(private val kb: KnowledgeBase) {
+         if (ex.isNotEmpty()) return ex.sortedBy { it.ingredient.name }
+         return fuzzyMatches(norm, minScore, limit)
+     }
++
++    /**
++     * Search for manual entry ("Add by name", "Add a missing ingredient"): exact matches, then terms
++     * with a word that starts with what was typed ("para" finds Paracetamol, "wort" St John's wort),
++     * then fuzzy matches for typos. Prefix completion stays out of [lookup], which the normaliser uses
++     * on label text: a fragment read from a label must not be completed into a guess. Here the user
++     * picks the result themselves.
++     */
++    fun search(raw: String, limit: Int = 8): List<Candidate> {
++        val norm = Text.normalise(raw)
++        if (norm.isEmpty()) return emptyList()
++        val found = LinkedHashMap<String, Candidate>()
++        fun addAll(cs: List<Candidate>) = cs.forEach { found.putIfAbsent(it.ingredient.id, it) }
++        addAll(exactMatches(norm).sortedBy { it.ingredient.name })
++        if (norm.length >= MIN_PREFIX) addAll(prefixMatches(norm))
++        addAll(fuzzyMatches(norm, minScore = 0.6, limit = limit))
++        return found.values.take(limit)
++    }
++
++    /** Terms with a word starting with [norm], best first: the more of the term typed, the higher. */
++    private fun prefixMatches(norm: String): List<Candidate> {
++        val best = HashMap<String, Candidate>()
++        for (e in entries) {
++            if (!(e.norm.startsWith(norm) || e.norm.contains(" $norm"))) continue
++            val ing = kb.ingredient(e.ingredientId) ?: continue
++            val s = norm.length.toDouble() / e.norm.length
++            val prev = best[ing.id]
++            if (prev == null || s > prev.score) best[ing.id] = Candidate(ing, s, e.norm)
++        }
++        return best.values.sortedWith(compareByDescending<Candidate> { it.score }.thenBy { it.ingredient.name })
++    }
++
++    private companion object {
++        /** Two letters match too much of the vocabulary to be a useful completion. */
++        const val MIN_PREFIX = 3
++    }
+ }
+diff --git a/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt b/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt
+index 3a862e3..2ed739c 100644
+--- a/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt
++++ b/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt
+@@ -51,6 +51,28 @@ class LexiconTest {
+         assertTrue(lexicon.lookup("irn").isEmpty())
+         assertEquals(Fixtures.iron, lexicon.lookup("iron").single().ingredient)
+     }
++
++    /** Emulator finding: typing "para" in "Add by name" gave "No match in the knowledge base". */
++    @Test fun searchFindsIngredientFromTypedPrefix() {
++        val c = lexicon.search("para")
++        assertEquals("search results: ${c.map { it.ingredient.name }}", Fixtures.paracetamol, c.firstOrNull()?.ingredient)
++    }
++
++    @Test fun searchMatchesTheStartOfAnyWordInATerm() {
++        val c = lexicon.search("wort")
++        assertTrue("search results: ${c.map { it.ingredient.name }}", c.any { it.ingredient == Fixtures.sjw })
++    }
++
++    @Test fun searchPutsExactMatchesFirstAndToleratesTypos() {
++        assertEquals(Fixtures.iron, lexicon.search("iron").first().ingredient)
++        assertEquals(Fixtures.warfarin, lexicon.search("warfarn").first().ingredient)
++        assertTrue("two letters are too few to complete", lexicon.search("pa").isEmpty())
++    }
++
++    /** Prefix completion is for manual search only: label text must not be completed into a guess. */
++    @Test fun lookupDoesNotCompletePrefixes() {
++        assertTrue(lexicon.lookup("para").isEmpty())
++    }
+ }
+ 
+ class IngredientNormaliserTest {

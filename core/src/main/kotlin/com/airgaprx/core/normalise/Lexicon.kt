@@ -77,4 +77,40 @@ class Lexicon(private val kb: KnowledgeBase) {
         if (ex.isNotEmpty()) return ex.sortedBy { it.ingredient.name }
         return fuzzyMatches(norm, minScore, limit)
     }
+
+    /**
+     * Search for manual entry ("Add by name", "Add a missing ingredient"): exact matches, then terms
+     * with a word that starts with what was typed ("para" finds Paracetamol, "wort" St John's wort),
+     * then fuzzy matches for typos. Prefix completion stays out of [lookup], which the normaliser uses
+     * on label text: a fragment read from a label must not be completed into a guess. Here the user
+     * picks the result themselves.
+     */
+    fun search(raw: String, limit: Int = 8): List<Candidate> {
+        val norm = Text.normalise(raw)
+        if (norm.isEmpty()) return emptyList()
+        val found = LinkedHashMap<String, Candidate>()
+        fun addAll(cs: List<Candidate>) = cs.forEach { found.putIfAbsent(it.ingredient.id, it) }
+        addAll(exactMatches(norm).sortedBy { it.ingredient.name })
+        if (norm.length >= MIN_PREFIX) addAll(prefixMatches(norm))
+        addAll(fuzzyMatches(norm, minScore = 0.6, limit = limit))
+        return found.values.take(limit)
+    }
+
+    /** Terms with a word starting with [norm], best first: the more of the term typed, the higher. */
+    private fun prefixMatches(norm: String): List<Candidate> {
+        val best = HashMap<String, Candidate>()
+        for (e in entries) {
+            if (!(e.norm.startsWith(norm) || e.norm.contains(" $norm"))) continue
+            val ing = kb.ingredient(e.ingredientId) ?: continue
+            val s = norm.length.toDouble() / e.norm.length
+            val prev = best[ing.id]
+            if (prev == null || s > prev.score) best[ing.id] = Candidate(ing, s, e.norm)
+        }
+        return best.values.sortedWith(compareByDescending<Candidate> { it.score }.thenBy { it.ingredient.name })
+    }
+
+    private companion object {
+        /** Two letters match too much of the vocabulary to be a useful completion. */
+        const val MIN_PREFIX = 3
+    }
 }

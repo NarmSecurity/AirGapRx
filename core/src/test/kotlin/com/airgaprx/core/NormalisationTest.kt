@@ -51,6 +51,28 @@ class LexiconTest {
         assertTrue(lexicon.lookup("irn").isEmpty())
         assertEquals(Fixtures.iron, lexicon.lookup("iron").single().ingredient)
     }
+
+    /** Emulator finding: typing "para" in "Add by name" gave "No match in the knowledge base". */
+    @Test fun searchFindsIngredientFromTypedPrefix() {
+        val c = lexicon.search("para")
+        assertEquals("search results: ${c.map { it.ingredient.name }}", Fixtures.paracetamol, c.firstOrNull()?.ingredient)
+    }
+
+    @Test fun searchMatchesTheStartOfAnyWordInATerm() {
+        val c = lexicon.search("wort")
+        assertTrue("search results: ${c.map { it.ingredient.name }}", c.any { it.ingredient == Fixtures.sjw })
+    }
+
+    @Test fun searchPutsExactMatchesFirstAndToleratesTypos() {
+        assertEquals(Fixtures.iron, lexicon.search("iron").first().ingredient)
+        assertEquals(Fixtures.warfarin, lexicon.search("warfarn").first().ingredient)
+        assertTrue("two letters are too few to complete", lexicon.search("pa").isEmpty())
+    }
+
+    /** Prefix completion is for manual search only: label text must not be completed into a guess. */
+    @Test fun lookupDoesNotCompletePrefixes() {
+        assertTrue(lexicon.lookup("para").isEmpty())
+    }
 }
 
 class IngredientNormaliserTest {

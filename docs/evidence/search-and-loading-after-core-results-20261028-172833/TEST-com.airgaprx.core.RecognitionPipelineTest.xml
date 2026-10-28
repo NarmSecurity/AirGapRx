@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.airgaprx.core.RecognitionPipelineTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-28T04:28:45" hostname="MOFRADPC" time="0.013">
+  <properties/>
+  <testcase name="goodCaptureProducesReviewItemsAndTimings" classname="com.airgaprx.core.RecognitionPipelineTest" time="0.007"/>
+  <testcase name="lowConfidenceCaptureAsksForRetake" classname="com.airgaprx.core.RecognitionPipelineTest" time="0.004"/>
+  <testcase name="blankCaptureAsksForRetake" classname="com.airgaprx.core.RecognitionPipelineTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

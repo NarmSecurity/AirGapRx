@@ -169,13 +169,20 @@ private fun ShelfLabel(row: ShelfRow, onRemove: () -> Unit) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(row.ingredient?.name ?: row.item.displayName, style = MaterialTheme.typography.titleLarge)
                 row.item.productName?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-                if (row.ingredient == null) {
-                    Text(
+                when (row.status) {
+                    RowStatus.KNOWN -> KindLine(row.ingredient?.kind)
+                    RowStatus.CHECKING -> Text(
+                        "Loading the knowledge base…",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    RowStatus.KB_UNAVAILABLE -> Text(
+                        "Can't be checked while the knowledge base is unavailable",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
+                    )
+                    RowStatus.NOT_IN_KB -> Text(
                         "Not in the knowledge base, so it can't be checked",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
                     )
-                } else {
-                    KindLine(row.ingredient.kind)
                 }
             }
             IconButton(onClick = onRemove) {

@@ -70,6 +70,8 @@ evidence does not exist yet; it must not be presented as done.
 | `app/build.gradle.kts` did not compile: in the release-gate task, `java` in `java.util.Properties` and `java.util.zip.ZipFile` resolved to a Gradle DSL accessor, not the package ("Unresolved reference: util") | First Gradle build (`docs/evidence/build-20261024-190934.log`) | Import both classes at the top of the script | The next build compiled the script and assembled the debug APK (`build-20261024-191001.log`) |
 | The "Scan a label" floating button covered most of the "Check interactions" button on the shelf screen | First emulator run (`docs/evidence/emulator-20261024/02-shelf.png`) | One bottom bar replaces the floating button; the filled button is the next step (scan, then check) | Emulator screenshot after the change (`emulator-20261024/redesign/01-shelf.png`); no automated UI test |
 | "Warnings: Do not take with" / "warfarin. Consult your doctor." split across OCR blocks added warfarin to the product | Emulator runs on 24 and 27 Oct (`docs/evidence/emulator-20261027/fig05-review.png`); reproduced by a failing Gradle/JUnit test on 28 Oct | WARNING carries into the next OCR block only while the warning sentence is unfinished (the previous line does not end with `.`, `!` or `?`); otherwise a new block resets to ACTIVE as before | `LabelParserTest.warningSplitAcrossOcrBlocksDoesNotAddOtherMedicines` (fails before, passes after under Gradle); `warningContinuesAcrossSeveralOcrBlocks`, `headerAtLineStartInNewBlockAfterWarningStartsNewPanel`; `activeAfterFinishedWarningInNewBlockIsKept` and `midLinePanelAfterFinishedWarningInNewBlockIsKept` guard against the first fix's side effect (below) |
+| After a cold start, every shelf item said "Not in the knowledge base, so it can't be checked" in red until the KB finished loading | Emulator run on 27 Oct (`docs/evidence/emulator-20261027/loading-state-after-force-stop.png`) | A row's status separates "loading", "KB unavailable" and "not in the KB"; while loading it says "Loading the knowledge base…" in neutral text | `ShelfRowStatusTest.knownItemIsCheckingWhileKbLoads`, `knownItemCannotBeCheckedWhenKbFailed` (both fail before, pass after; first `:app` unit tests) |
+| "Add by name" found nothing for a partial name ("para" for Paracetamol), because the search scored the typed text against whole terms as if it were a misspelling | Emulator run on 24 Oct (`docs/evidence/emulator-20261027/README.md`, finding 2) | `Lexicon.search` for the two manual-entry dialogs: exact, then terms with a word starting with the typed text (3 letters or more), then fuzzy. The normaliser's `lookup` is unchanged, so label text is never completed into a guess | `LexiconTest.searchFindsIngredientFromTypedPrefix`, `searchMatchesTheStartOfAnyWordInATerm` (both fail before, pass after); `searchPutsExactMatchesFirstAndToleratesTypos`, `lookupDoesNotCompletePrefixes` |
 
 For the first six defects, each named regression test was confirmed to fail on the code before its fix and pass after it. Method
 disclosure: these before-and-after runs used the Kotlin command-line compiler with a minimal substitute for
@@ -115,3 +117,16 @@ label and Review listed only St John's wort; the label hash matched and the cras
 The source change is `docs/evidence/warning-sentence-source-20261028-165737.patch`. A warning that OCR
 splits after a full stop ("Do not take with warfarin." / "Or aspirin.") is still read as front text; the
 Review screen shows any medicine that adds, and held-out labels will measure how often it happens.
+
+The last two rows were fixed together. Before the fixes, with `Lexicon.search` and `rowStatus` reproducing
+the old behaviour, the two search tests failed with empty results
+(`docs/evidence/name-search-before-20261028-172601.log`, `name-search-before-results-20261028-172601/`) and
+the two row-status tests failed (`docs/evidence/shelf-loading-before-20261028-172735.log`,
+`shelf-loading-before-results-20261028-172735/`). After them, 48 `:core` tests and 4 `:app` unit tests passed
+with zero failures, errors or skips (`docs/evidence/search-and-loading-after-20261028-172833.log` and its two
+results folders), the first-build script passed (`docs/evidence/build-20261028-172904.log`), and `aapt2` lists
+only CAMERA and the receiver permission (`docs/evidence/apk-permissions-search-and-loading-20261028-172904.txt`).
+On the emulator, the APK with SHA-256 `E7C1CD52BF8FD6A032D072E6BC4F1657E91B2020788739BDCFBA9E85856AC47E`
+suggested Paracetamol for "para" and St John's wort for "wort", with an empty crash buffer
+(`docs/evidence/search-and-loading-emulator-check-20261028-173145.txt`). The loading text could not be seen
+there: on that cold start the KB was ready by the first frame, so it rests on the unit tests alone.

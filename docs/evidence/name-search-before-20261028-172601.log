@@ -1,0 +1,33 @@
+# :core:test before the name-search fix, 2026-10-28T17:26:01+13:00, base cffb5ea; Lexicon.search delegates to lookup(minScore = 0.6), the call both search dialogs made
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:processResources NO-SOURCE
+> Task :core:processTestResources NO-SOURCE
+> Task :core:compileKotlin
+> Task :core:compileJava NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar
+> Task :core:compileTestKotlin
+> Task :core:compileTestJava NO-SOURCE
+> Task :core:testClasses UP-TO-DATE
+
+> Task :core:test FAILED
+
+LexiconTest > searchFindsIngredientFromTypedPrefix FAILED
+    java.lang.AssertionError at NormalisationTest.kt:58
+
+LexiconTest > searchMatchesTheStartOfAnyWordInATerm FAILED
+    java.lang.AssertionError at NormalisationTest.kt:63
+
+48 tests completed, 2 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':core:test'.
+> There were failing tests. See the report at: file:///C:/Users/hosse/Desktop/AirGapRx/core/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 15s
+4 actionable tasks: 4 executed

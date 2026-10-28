@@ -1,0 +1,10 @@
+# Emulator check of the name-search and loading-text fixes, 2026-10-28T17:31:50+13:00
+AVD=AirGapRx_API35 (Android 15, API 35, google_apis x86_64; emulator, not a phone)
+BUILD_SHA256=E7C1CD52BF8FD6A032D072E6BC4F1657E91B2020788739BDCFBA9E85856AC47E
+INSTALLED=e7c1cd52bf8fd6a032d072e6bc4f1657e91b2020788739bdcfba9e85856ac47e  /data/app/~~mmAO2gcZ5D6YR3-jo2DYzA==/com.airgaprx.app-EsxX71jJaRC_cbDur-b7pQ==/base.apk
+CRASH_BUFFER:
+
+RESULTS:
+- Add by name, "para": suggestion "Paracetamol, Over-the-counter medicine" (name-search-emulator-para-20261028-173125.png/.xml). Before the fix: "No match in the knowledge base" (24 Oct, emulator-20261027/README.md finding 2).
+- Add by name, "wort": suggestion "St John's wort, Herbal supplement" (name-search-emulator-wort-20261028-173145.png/.xml). Dialog cancelled; nothing added.
+- Loading text: not reproduced. After am force-stop and relaunch, 31 consecutive screencaps showed the splash screen and then the ready shelf (all three rows with their type line); the KB finished loading before the first app frame. The loading text is covered only by ShelfRowStatusTest on the JVM.

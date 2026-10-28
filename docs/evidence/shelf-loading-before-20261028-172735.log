@@ -1,0 +1,70 @@
+# :app:testDebugUnitTest before the loading-text fix, 2026-10-28T17:27:35+13:00, base cffb5ea; rowStatus reproduces the screen's old rule (no ingredient means 'Not in the knowledge base')
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:processResources NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugResValues
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:checkDebugAarMetadata
+> Task :core:compileKotlin
+> Task :core:compileJava NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:mergeDebugResources
+> Task :app:parseDebugLocalResources
+
+> Task :app:processDebugMainManifest
+C:\Users\hosse\Desktop\AirGapRx\app\src\main\AndroidManifest.xml:17:5-96 Warning:
+	uses-permission#android.permission.ACCESS_WIFI_STATE was tagged at AndroidManifest.xml:17 to remove other declarations but no other declaration present
+C:\Users\hosse\Desktop\AirGapRx\app\src\main\AndroidManifest.xml:18:5-99 Warning:
+	uses-permission#android.permission.CHANGE_NETWORK_STATE was tagged at AndroidManifest.xml:18 to remove other declarations but no other declaration present
+C:\Users\hosse\Desktop\AirGapRx\app\src\main\AndroidManifest.xml:19:5-96 Warning:
+	uses-permission#android.permission.CHANGE_WIFI_STATE was tagged at AndroidManifest.xml:19 to remove other declarations but no other declaration present
+
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:processDebugManifestForPackage
+> Task :app:processDebugResources
+
+> Task :app:compileDebugKotlin
+w: file:///C:/Users/hosse/Desktop/AirGapRx/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewScreen.kt:152:45 'val Icons.Outlined.HelpCenter: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.HelpCenter.
+
+> Task :app:compileDebugJavaWithJavac
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest
+
+ShelfRowStatusTest > knownItemCannotBeCheckedWhenKbFailed FAILED
+    java.lang.AssertionError at ShelfRowStatusTest.kt:21
+
+ShelfRowStatusTest > knownItemIsCheckingWhileKbLoads FAILED
+    java.lang.AssertionError at ShelfRowStatusTest.kt:17
+
+4 tests completed, 2 failed
+
+> Task :app:testDebugUnitTest FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///C:/Users/hosse/Desktop/AirGapRx/app/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 33s
+26 actionable tasks: 26 executed
