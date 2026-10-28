@@ -1,0 +1,34 @@
+HEAD=3951f2dbfb7338e65d857dda792d1a2a9b8f1929
+STATE=regression test added; parser unchanged
+COMMAND=.\gradlew.bat :core:test --tests com.airgaprx.core.LabelParserTest.warningSplitAcrossOcrBlocksDoesNotAddOtherMedicines --offline --console=plain
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:compileKotlin UP-TO-DATE
+> Task :core:compileJava NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :core:processTestResources NO-SOURCE
+> Task :core:compileTestKotlin
+> Task :core:compileTestJava NO-SOURCE
+> Task :core:testClasses UP-TO-DATE
+
+> Task :core:test FAILED
+
+LabelParserTest > warningSplitAcrossOcrBlocksDoesNotAddOtherMedicines FAILED
+    java.lang.AssertionError at RecognitionTest.kt:98
+
+1 test completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':core:test'.
+> There were failing tests. See the report at: file:///C:/Users/hosse/Desktop/AirGapRx/core/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 27s
+4 actionable tasks: 2 executed, 2 up-to-date
+EXIT=1

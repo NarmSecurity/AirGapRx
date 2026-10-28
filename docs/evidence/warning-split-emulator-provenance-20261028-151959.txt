@@ -1,0 +1,4 @@
+AVD=AirGapRx_API35
+DEVICE=emulator-5554
+dcb88b9c96c87cd6a7228703abfc242b289174eb2d2fc93767770ae76170d6b8  /data/app/~~PQcDUH3ko6j_wdT5fwwrkw==/com.airgaprx.app-QTfePf1fI4NzbTxay0kjvw==/base.apk
+Row: 0 _id=1000000019, _display_name=test-label-sjw.png, _data=/storage/emulated/0/Pictures/test-label-sjw.png

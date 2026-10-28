@@ -1,0 +1,4 @@
+BASE_HEAD=3951f2dbfb7338e65d857dda792d1a2a9b8f1929
+STATE=uncommitted parser fix and three added tests
+AACFD56E6F4DE1284BD69CEDEDC59409CEBC5947D5DEA99917B146F4B3CC8B3D  core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt
+C5826C250CEEE3517DB39A4FFA94753F1E7C0CC3193C3B097A5AABD963756A69  core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt

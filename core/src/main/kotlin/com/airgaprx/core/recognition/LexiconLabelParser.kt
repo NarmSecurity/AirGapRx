@@ -21,9 +21,11 @@ import com.airgaprx.core.normalise.Text
  *  - **OTHER** ("Directions", "Storage"): skipped.
  *
  * Modes are not permanent. A later header switches mode again, and every new OCR text block
- * starts back in ACTIVE, so an active panel that OCR reads *after* an excipient list is still
- * parsed. The design choice is to fail visibly: when in doubt, text is kept and shown on the
- * Review screen rather than dropped.
+ * starts back in ACTIVE, so an active panel that OCR reads *after* an excipient list or a warning
+ * is still parsed. The one exception is an unfinished warning sentence ("Do not take with"): OCR
+ * can split a warning before the medicine it names, so WARNING carries into the next block until
+ * the sentence ends. The design choice is to fail visibly: when in doubt, text is kept and shown
+ * on the Review screen rather than dropped.
  */
 class LexiconLabelParser(
     private val lexicon: Lexicon,
@@ -63,15 +65,19 @@ class LexiconLabelParser(
         var mode = Mode.ACTIVE
         var inPanel = false
         var panelLines = 0
+        var previous = ""
         for (line in ocr.lines) {
             val text = line.text
             if (text.isBlank()) continue
             if (line.block != block) {
                 block = line.block
-                // A new OCR block is a layout boundary: skipped modes end here (they never carry
-                // over to a new block), but an open ingredient panel may continue into it.
-                if (mode != Mode.ACTIVE) { mode = Mode.ACTIVE; inPanel = false }
+                // A new OCR block is a layout boundary: skipped modes end here, but an open
+                // ingredient panel may continue into it, and so may a warning whose sentence is
+                // unfinished ("Do not take with" / "warfarin").
+                val unfinishedWarning = mode == Mode.WARNING && !SENTENCE_END.containsMatchIn(previous)
+                if (mode != Mode.ACTIVE && !unfinishedWarning) { mode = Mode.ACTIVE; inPanel = false }
             }
+            previous = text
             if (inPanel && ++panelLines > MAX_PANEL_LINES) inPanel = false
 
             var cursor = 0
@@ -153,6 +159,8 @@ class LexiconLabelParser(
     companion object {
         /** Safety valve for a panel header that OCR never closes; long panels (20+ lines) are rare. */
         private const val MAX_PANEL_LINES = 30
+        /** A line that ends a sentence, allowing closing brackets or quotes after the mark. */
+        private val SENTENCE_END = Regex("[.!?][)\\]\"'”’]*\\s*$")
         private val SEPARATORS = Regex("[,;:•·|/()\\[\\]]|\\s+and\\s+(?=[a-z])|\\s+\\+\\s+", RegexOption.IGNORE_CASE)
 
         val PANEL_HEADERS = listOf(

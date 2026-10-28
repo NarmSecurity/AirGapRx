@@ -1,0 +1,30 @@
+**********************
+PowerShell transcript start
+Start time: 20261028151800
+Username: MOFRADPC\hosse
+RunAs User: MOFRADPC\hosse
+Configuration Name: 
+Machine: MOFRADPC (Microsoft Windows NT 10.0.26300.0)
+Host Application: pwsh.dll -Command try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}
+$adb = 'C:\Users\hosse\AppData\Local\Android\Sdk\platform-tools\adb.exe'; $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'; $log = "docs/evidence/warning-split-emulator-check-$stamp.log"; if (Test-Path -LiteralPath $log) { throw 'Evidence path exists' }; Start-Transcript -LiteralPath $log | Out-Null; & $adb -s emulator-5554 install -r 'app/build/outputs/apk/debug/app-debug.apk'; if ($LASTEXITCODE -ne 0) { Stop-Transcript; throw 'Install failed' }; & $adb -s emulator-5554 shell am force-stop com.airgaprx.app; & $adb -s emulator-5554 shell am start -W -n com.airgaprx.app/.MainActivity; & $adb -s emulator-5554 shell pm path com.airgaprx.app; & $adb -s emulator-5554 shell uiautomator dump /sdcard/airgaprx-warning-check.xml; & $adb -s emulator-5554 pull /sdcard/airgaprx-warning-check.xml "docs/evidence/warning-split-emulator-shelf-$stamp.xml"; Stop-Transcript | Out-Null; Write-Output "LOG=$log"
+Process ID: 36568
+PSVersion: 7.6.5
+PSEdition: Core
+GitCommitId: 7.6.5
+OS: Microsoft Windows 10.0.26300
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+
+
+
+
+
+
+**********************
+PowerShell transcript end
+End time: 20261028151810
+**********************

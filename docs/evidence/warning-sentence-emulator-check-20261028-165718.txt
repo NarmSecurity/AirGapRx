@@ -1,0 +1,11 @@
+# Emulator check of the sentence-boundary fix, 2026-10-28T16:57:21+13:00
+AVD=AirGapRx_API35 (Android 15, API 35, google_apis x86_64; emulator, not a phone)
+BUILD_SHA256=325DECFA97E1BB654F67702B08133C9C723F31A7A82B0A47DF54CFB6039D3460
+INSTALLED=325decfa97e1bb654f67702b08133c9c723f31a7a82b0a47df54cfb6039d3460  /data/app/~~LmlfZI6Ejm4yZ9sTdFrzjQ==/com.airgaprx.app-llJn1cz8NmiW1WiRpYdAdg==/base.apk
+LOCAL_LABEL_SHA256=cbbc7ef20f1ec2d73fae6f3ba3f0bc9bfd96f52d5972c4e94dc389156110cf54
+EMULATOR_LABEL=cbbc7ef20f1ec2d73fae6f3ba3f0bc9bfd96f52d5972c4e94dc389156110cf54  /storage/emulated/0/Pictures/test-label-sjw.png
+TIMING:
+--------- beginning of main
+10-28 16:57:06.757  2445  2445 I AirGapRx.Timing: {ocr=1796, parse=16, normalise=2} total=1814ms
+10-28 16:57:06.762  2445  2445 I AirGapRx.Timing: 1793159826759,1793159753,gallery,Google sdk_gphone64_x86_64,15,2472,1,73544,,1796,16,2,,,Recognised,261112,per_operation
+CRASH_BUFFER:

@@ -1,0 +1,10 @@
+HEAD=3951f2dbfb7338e65d857dda792d1a2a9b8f1929
+STATE=regression test added; parser unchanged
+COMMAND=.\gradlew.bat :core:test --tests com.airgaprx.core.LabelParserTest.warningSplitAcrossOcrBlocksDoesNotAddOtherMedicines --offline --console=plain
+Exception in thread "main" java.io.FileNotFoundException: C:\Users\hosse\.gradle\wrapper\dists\gradle-8.11.1-bin\bpt9gzteqjrbo1mjrsomdt32c\gradle-8.11.1-bin.zip.lck (Access is denied)
+	at java.base/java.io.RandomAccessFile.open0(Native Method)
+	at java.base/java.io.RandomAccessFile.open(RandomAccessFile.java:356)
+	at java.base/java.io.RandomAccessFile.<init>(RandomAccessFile.java:273)
+	at java.base/java.io.RandomAccessFile.<init>(RandomAccessFile.java:223)
+	at org.gradle.wrapper.GradleWrapperMain.main(SourceFile:67)
+EXIT=1

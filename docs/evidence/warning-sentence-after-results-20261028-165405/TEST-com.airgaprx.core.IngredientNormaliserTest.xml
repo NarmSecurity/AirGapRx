@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.airgaprx.core.IngredientNormaliserTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-28T03:54:15" hostname="MOFRADPC" time="0.045">
+  <properties/>
+  <testcase name="ambiguousItemIsKeptEvenIfAnOptionIsAlreadyResolved" classname="com.airgaprx.core.IngredientNormaliserTest" time="0.035"/>
+  <testcase name="unknownIngredientIsEscalated" classname="com.airgaprx.core.IngredientNormaliserTest" time="0.003"/>
+  <testcase name="nearMissEscalatesInsteadOfGuessing" classname="com.airgaprx.core.IngredientNormaliserTest" time="0.002"/>
+  <testcase name="duplicatesCollapse" classname="com.airgaprx.core.IngredientNormaliserTest" time="0.002"/>
+  <testcase name="exactSynonymIsResolved" classname="com.airgaprx.core.IngredientNormaliserTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

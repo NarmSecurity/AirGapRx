@@ -1,0 +1,10 @@
+STALE SNAPSHOT - NOT REGRESSION EVIDENCE
+
+The command recorded in warning-split-before-20261028-143506.log failed on the
+Gradle cache lock before any tests ran. The first capture command inadvertently
+copied pre-existing test outputs after that failure. These outputs are not from
+this run and must not be used as evidence of the new regression test.
+
+The actual failing regression run is recorded in
+warning-split-before-20261028-143550.log and
+warning-split-before-results-20261028-143550/.

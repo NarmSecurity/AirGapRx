@@ -86,6 +86,61 @@ class LabelParserTest {
         assertFalse("warfarin is only mentioned in a warning: $texts", texts.any { it.contains("warfarin") })
     }
 
+    /** Emulator finding: ML Kit can split a warning before the medicine it names. */
+    @Test fun warningSplitAcrossOcrBlocksDoesNotAddOtherMedicines() {
+        val label = OcrResult(listOf(
+            TextLine("Each tablet contains Paracetamol 500 mg", 0.95f, block = 0),
+            TextLine("Warnings: Do not take with", 0.95f, block = 1),
+            TextLine("warfarin. Consult your doctor.", 0.95f, block = 2),
+        ))
+        val texts = parser.parse(label).map { it.text }
+        assertTrue("the product's active must still be kept: $texts", texts.contains("paracetamol"))
+        assertFalse("warfarin is only mentioned in a split warning: $texts", texts.any { it.contains("warfarin") })
+    }
+
+    @Test fun warningContinuesAcrossSeveralOcrBlocks() {
+        val label = OcrResult(listOf(
+            TextLine("Each tablet contains Paracetamol 500 mg", 0.95f, block = 0),
+            TextLine("Warnings: Do not take with", 0.95f, block = 1),
+            TextLine("warfarin or a product that contains", 0.95f, block = 2),
+            TextLine("aspirin.", 0.95f, block = 3),
+        ))
+        val texts = parser.parse(label).map { it.text }
+        assertEquals(listOf("paracetamol"), texts)
+    }
+
+    @Test fun headerAtLineStartInNewBlockAfterWarningStartsNewPanel() {
+        val label = OcrResult(listOf(
+            TextLine("Warnings: Do not take with", 0.95f, block = 0),
+            TextLine("warfarin.", 0.95f, block = 1),
+            TextLine("Active ingredients: Ashwagandha 300 mg, Magnesium 100 mg", 0.95f, block = 2),
+        ))
+        val texts = parser.parse(label).map { it.text }
+        assertTrue("known and unknown actives must reach review: $texts", texts.containsAll(listOf("ashwagandha", "magnesium")))
+        assertFalse(texts.toString(), texts.any { it.contains("warfarin") })
+    }
+
+    /** Probe of the split-warning fix: a finished warning must not hide actives in the next OCR block. */
+    @Test fun activeAfterFinishedWarningInNewBlockIsKept() {
+        val label = OcrResult(listOf(
+            TextLine("Warnings: Do not take with warfarin.", 0.95f, block = 0),
+            TextLine("Hypericum perforatum (St John's Wort) 300 mg", 0.95f, block = 1),
+        ))
+        val texts = parser.parse(label).map { it.text }
+        assertTrue("an active after a finished warning must reach review: $texts", texts.any { it.contains("wort") })
+        assertFalse(texts.toString(), texts.any { it.contains("warfarin") })
+    }
+
+    @Test fun midLinePanelAfterFinishedWarningInNewBlockIsKept() {
+        val label = OcrResult(listOf(
+            TextLine("Warnings: Do not take with warfarin.", 0.95f, block = 0),
+            TextLine("Mood support. Each tablet contains St John's Wort 300 mg", 0.95f, block = 1),
+        ))
+        val texts = parser.parse(label).map { it.text }
+        assertTrue("an active after a finished warning must reach review: $texts", texts.any { it.contains("wort") })
+        assertFalse(texts.toString(), texts.any { it.contains("warfarin") })
+    }
+
     /** Second review: "contains" inside a warning re-opened an active panel and added warfarin. */
     @Test fun containsInsideWarningDoesNotReopenActivePanel() {
         val texts = parser.parse(ocr(

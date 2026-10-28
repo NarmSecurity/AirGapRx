@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.airgaprx.core.KbPackageTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-28T03:54:15" hostname="MOFRADPC" time="0.318">
+  <properties/>
+  <testcase name="onDiskTamperingIsDetected" classname="com.airgaprx.core.KbPackageTest" time="0.187"/>
+  <testcase name="developmentDataStillLoadsInDebugPolicy" classname="com.airgaprx.core.KbPackageTest" time="0.012"/>
+  <testcase name="releasePolicyRejectsSignedDevelopmentData" classname="com.airgaprx.core.KbPackageTest" time="0.042"/>
+  <testcase name="unexpectedFileIsRejected" classname="com.airgaprx.core.KbPackageTest" time="0.009"/>
+  <testcase name="downgradeIsRejected" classname="com.airgaprx.core.KbPackageTest" time="0.022"/>
+  <testcase name="untrustedSignerIsRejected" classname="com.airgaprx.core.KbPackageTest" time="0.01"/>
+  <testcase name="validPackageInstalls" classname="com.airgaprx.core.KbPackageTest" time="0.016"/>
+  <testcase name="corruptedChecksumIsRejectedAndPriorRetained" classname="com.airgaprx.core.KbPackageTest" time="0.019"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -145,7 +145,7 @@ never downloads anything itself.
 
 | Command | What it checks |
 |---|---|
-| `./gradlew :core:test` | 39 JVM unit test definitions (see *Verification status* below): text normalisation, fuzzy matching, parser (incl. excipient filtering), normaliser escalation, ranking, duplicate detection, section-aware parsing, KB signature, checksum, downgrade, tamper and review-status rejection |
+| `./gradlew :core:test` | 44 JVM unit test definitions (see *Verification status* below): text normalisation, fuzzy matching, parser (incl. excipient filtering), normaliser escalation, ranking, duplicate detection, section-aware parsing, KB signature, checksum, downgrade, tamper and review-status rejection |
 | `./gradlew :app:verifyNoNetworkPermissionRelease` | Fails if any network permission survives manifest merging (R1) |
 | `scripts/check_apk_permissions.sh <apk>` | Lists the APK's permissions with `aapt2` and fails on any network permission (R1) |
 | `python kb/build_kb.py && ./gradlew :core:evaluate` | Criteria 4 and 5: normalisation accuracy and detection recall against the compiled KB |
@@ -162,7 +162,9 @@ never downloads anything itself.
   [HTML report](docs/evidence/core-test-report-20261024-185955/index.html)). It was run with
   `--configure-on-demand` because the Android SDK was not yet installed, so `:app` was not configured. The
   same 39 tests had passed earlier with a JUnit substitute
-  ([`docs/evidence/core-tests-eecc9f0.txt`](docs/evidence/core-tests-eecc9f0.txt)).
+  ([`docs/evidence/core-tests-eecc9f0.txt`](docs/evidence/core-tests-eecc9f0.txt)). After the
+  split-warning fix on 28 Oct 2026, all 44 tests passed under Gradle
+  ([results](docs/evidence/warning-sentence-after-results-20261028-165405/)).
 - **Android build: compiles.** The debug APK built on 24 Oct 2026 with JDK 21 and the Android SDK
   command-line tools ([log](docs/evidence/build-20261024-191001.log)). The merged-manifest check and the
   `aapt2` check both found no network permission; the APK declares only `CAMERA` and the app's own

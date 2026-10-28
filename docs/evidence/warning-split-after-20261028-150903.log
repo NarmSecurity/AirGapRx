@@ -1,0 +1,18 @@
+HEAD=3951f2dbfb7338e65d857dda792d1a2a9b8f1929
+STATE=uncommitted warning-continuation fix and three regression tests
+COMMAND=.\gradlew.bat :core:test --offline --console=plain
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:processResources NO-SOURCE
+> Task :core:processTestResources NO-SOURCE
+> Task :core:compileKotlin
+> Task :core:compileJava NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar
+> Task :core:compileTestKotlin
+> Task :core:compileTestJava NO-SOURCE
+> Task :core:testClasses UP-TO-DATE
+> Task :core:test
+
+BUILD SUCCESSFUL in 8s
+4 actionable tasks: 4 executed
+EXIT=0

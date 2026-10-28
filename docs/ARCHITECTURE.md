@@ -55,7 +55,7 @@ evidence does not exist yet; it must not be presented as done.
 | R1 verified by packet capture over a full session **and** manifest inspection (M1 criterion 1) | Same, plus: merged-manifest Gradle check, `aapt2` APK check, runtime EgressGuard | Building revealed that ML Kit's dependencies add INTERNET through manifest merging, so inspecting the *source* manifest alone would have passed a non-compliant build | Packet capture result. Capture **all device traffic**, not just the app's UID. A developer using bundled ML Kit without network permissions observed no app-UID traffic and a Play services "ClientTelemetry" connection that returned a *disabled* status, and asked whether delegated transmission is possible; no successful transmission was shown (googlesamples/mlkit #1076). The capture checks for it rather than assuming either way |
 | Single Android module | `:app` + pure-Kotlin `:core` | The compiler enforces the MVVM domain boundary and the domain tests run without a device | — |
 | (not planned) | Duplicate-ingredient alert | The same active ingredient in two products (e.g. paracetamol) is a common overdose route, and it falls out of the shelf model | Covered by unit test; show on device |
-| (not planned) | Section-aware parsing: excipient and warning sections skipped, sections reset at OCR block boundaries | Excipients (magnesium stearate, iron oxide) raised false mineral interactions; warnings ("do not take with warfarin") added medicines that are not in the product | Effect on ingredient recall on the held-out labels |
+| (not planned) | Section-aware parsing: excipient and warning sections skipped; every new OCR block resets to ACTIVE, except that a warning whose sentence is unfinished continues into the next block | Excipients (magnesium stearate, iron oxide) raised false mineral interactions; warnings ("do not take with warfarin") added medicines that are not in the product | Effect on ingredient recall on the held-out labels |
 
 ### Defects found and fixed during development (reflection evidence)
 
@@ -69,11 +69,49 @@ evidence does not exist yet; it must not be presented as done.
 | A correctly signed *development* KB could be packaged in a release APK | External code review | Review status in the signed manifest; release policy at runtime; Gradle release gate | `KbPackageTest.releasePolicyRejectsSignedDevelopmentData` |
 | `app/build.gradle.kts` did not compile: in the release-gate task, `java` in `java.util.Properties` and `java.util.zip.ZipFile` resolved to a Gradle DSL accessor, not the package ("Unresolved reference: util") | First Gradle build (`docs/evidence/build-20261024-190934.log`) | Import both classes at the top of the script | The next build compiled the script and assembled the debug APK (`build-20261024-191001.log`) |
 | The "Scan a label" floating button covered most of the "Check interactions" button on the shelf screen | First emulator run (`docs/evidence/emulator-20261024/02-shelf.png`) | One bottom bar replaces the floating button; the filled button is the next step (scan, then check) | Emulator screenshot after the change (`emulator-20261024/redesign/01-shelf.png`); no automated UI test |
+| "Warnings: Do not take with" / "warfarin. Consult your doctor." split across OCR blocks added warfarin to the product | Emulator runs on 24 and 27 Oct (`docs/evidence/emulator-20261027/fig05-review.png`); reproduced by a failing Gradle/JUnit test on 28 Oct | WARNING carries into the next OCR block only while the warning sentence is unfinished (the previous line does not end with `.`, `!` or `?`); otherwise a new block resets to ACTIVE as before | `LabelParserTest.warningSplitAcrossOcrBlocksDoesNotAddOtherMedicines` (fails before, passes after under Gradle); `warningContinuesAcrossSeveralOcrBlocks`, `headerAtLineStartInNewBlockAfterWarningStartsNewPanel`; `activeAfterFinishedWarningInNewBlockIsKept` and `midLinePanelAfterFinishedWarningInNewBlockIsKept` guard against the first fix's side effect (below) |
 
-Each regression test above was confirmed to fail on the code before its fix and pass after it. Method
+For the first six defects, each named regression test was confirmed to fail on the code before its fix and pass after it. Method
 disclosure: these before-and-after runs used the Kotlin command-line compiler with a minimal substitute for
 JUnit, because the development environment could not download Gradle dependencies, so the "fails before"
 half remains provisional. The "passes after" half is verified under Gradle: all 39 `:core` tests passed
 with Gradle 8.11.1 and JUnit 4.13.2 on JDK 21 at `eecc9f0` on 24 Oct 2026
 (`docs/evidence/core-test-gradle-20261024-185955.log`). These are individual
 defects; fixing them is not evidence of overall accuracy, which comes only from the M1 evaluation.
+
+The split-warning regression failed before the fix under Gradle/JUnit with
+`warfarin is only mentioned in a split warning: [paracetamol, warfarin]`
+(`docs/evidence/warning-split-before-20261028-143550.log` and the matching
+`warning-split-before-results-20261028-143550/` JUnit XML). After the fix, all 42 core tests passed
+with zero failures, errors or skips (`docs/evidence/warning-split-after-results-20261028-150903/`),
+including both existing excipient regressions. The debug build and merged-manifest check passed
+(`docs/evidence/build-20261028-151059.log`). These results cover uncommitted changes based on
+`3951f2d`; they do not establish held-out accuracy or performance on a phone.
+
+On the Android 15 emulator, the fixed APK read the same synthetic label and Review listed only
+St John's wort, with no warfarin (`docs/evidence/warning-split-emulator-review-20261028-151959.xml`).
+The installed APK matched the build SHA-256
+`DCB88B9C96C87CD6A7228703ABFC242B289174EB2D2FC93767770AE76170D6B8`
+(`docs/evidence/warning-split-emulator-provenance-20261028-151959.txt`). The label image's hash also
+matched the original test image, and the emulator crash buffer was empty
+(`docs/evidence/warning-split-emulator-label-and-crashes-20261028-152027.txt`). The `aapt2` permission
+dump still lists only CAMERA and the app's receiver permission
+(`docs/evidence/apk-permissions-warning-fix-20261028-151927.txt`). This is a focused regression check,
+not an OCR accuracy evaluation; the report and its figures remain unchanged.
+
+That first fix kept WARNING until the next section header, and review of it found a side effect: an active
+read in a new block after a *finished* warning was silently dropped unless a panel header began the line
+("Hypericum perforatum (St John's Wort) 300 mg" after "Warnings: Do not take with warfarin." gave no
+ingredients). A dropped active is invisible on the Review screen, unlike an extra one, so the rule was
+narrowed to unfinished warning sentences. The two new tests failed on the first fix
+(`docs/evidence/warning-sentence-before-20261028-165332.log` and `warning-sentence-before-results-20261028-165332/`);
+after the change all 44 core tests passed with zero failures, errors or skips
+(`docs/evidence/warning-sentence-after-results-20261028-165405/`). The first-build script passed, including
+the merged-manifest check (`docs/evidence/build-20261028-165424.log`), and `aapt2` lists only CAMERA and the
+receiver permission (`docs/evidence/apk-permissions-warning-sentence-20261028-165424.txt`). On the emulator,
+the APK with SHA-256 `325DECFA97E1BB654F67702B08133C9C723F31A7A82B0A47DF54CFB6039D3460` read the same test
+label and Review listed only St John's wort; the label hash matched and the crash buffer was empty
+(`docs/evidence/warning-sentence-emulator-check-20261028-165718.txt`, `warning-sentence-emulator-review-20261028-165718.png`).
+The source change is `docs/evidence/warning-sentence-source-20261028-165737.patch`. A warning that OCR
+splits after a full stop ("Do not take with warfarin." / "Or aspirin.") is still read as front text; the
+Review screen shows any medicine that adds, and held-out labels will measure how often it happens.

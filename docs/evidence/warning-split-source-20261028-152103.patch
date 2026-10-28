@@ -1,0 +1,77 @@
+diff --git a/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt b/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt
+index 8f4b7b0..8ce115f 100644
+--- a/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt
++++ b/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt
+@@ -20,10 +20,10 @@ import com.airgaprx.core.normalise.Text
+  *    *other* medicines that are not in the product.
+  *  - **OTHER** ("Directions", "Storage"): skipped.
+  *
+- * Modes are not permanent. A later header switches mode again, and every new OCR text block
+- * starts back in ACTIVE, so an active panel that OCR reads *after* an excipient list is still
+- * parsed. The design choice is to fail visibly: when in doubt, text is kept and shown on the
+- * Review screen rather than dropped.
++ * A later header switches mode again. A new OCR text block resets EXCIPIENT and OTHER to ACTIVE,
++ * so actives read after an excipient list are still parsed. WARNING continues across blocks until
++ * another section header: OCR can split a warning before the medicine it names. A later active
++ * panel therefore needs an explicit header to resume parsing after a warning.
+  */
+ class LexiconLabelParser(
+     private val lexicon: Lexicon,
+@@ -68,9 +68,9 @@ class LexiconLabelParser(
+             if (text.isBlank()) continue
+             if (line.block != block) {
+                 block = line.block
+-                // A new OCR block is a layout boundary: skipped modes end here (they never carry
+-                // over to a new block), but an open ingredient panel may continue into it.
+-                if (mode != Mode.ACTIVE) { mode = Mode.ACTIVE; inPanel = false }
++                // Layout boundaries end excipient/other sections, but not warnings: the next
++                // block may contain the medicine a warning names. Active panels also continue.
++                if (mode == Mode.EXCIPIENT || mode == Mode.OTHER) { mode = Mode.ACTIVE; inPanel = false }
+             }
+             if (inPanel && ++panelLines > MAX_PANEL_LINES) inPanel = false
+ 
+diff --git a/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt b/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt
+index 739f603..0c19855 100644
+--- a/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt
++++ b/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt
+@@ -86,6 +86,40 @@ class LabelParserTest {
+         assertFalse("warfarin is only mentioned in a warning: $texts", texts.any { it.contains("warfarin") })
+     }
+ 
++    /** Emulator finding: ML Kit can split a warning before the medicine it names. */
++    @Test fun warningSplitAcrossOcrBlocksDoesNotAddOtherMedicines() {
++        val label = OcrResult(listOf(
++            TextLine("Each tablet contains Paracetamol 500 mg", 0.95f, block = 0),
++            TextLine("Warnings: Do not take with", 0.95f, block = 1),
++            TextLine("warfarin. Consult your doctor.", 0.95f, block = 2),
++        ))
++        val texts = parser.parse(label).map { it.text }
++        assertTrue("the product's active must still be kept: $texts", texts.contains("paracetamol"))
++        assertFalse("warfarin is only mentioned in a split warning: $texts", texts.any { it.contains("warfarin") })
++    }
++
++    @Test fun warningContinuesAcrossSeveralOcrBlocks() {
++        val label = OcrResult(listOf(
++            TextLine("Each tablet contains Paracetamol 500 mg", 0.95f, block = 0),
++            TextLine("Warnings: Do not take with", 0.95f, block = 1),
++            TextLine("warfarin or a product that contains", 0.95f, block = 2),
++            TextLine("aspirin.", 0.95f, block = 3),
++        ))
++        val texts = parser.parse(label).map { it.text }
++        assertEquals(listOf("paracetamol"), texts)
++    }
++
++    @Test fun headerAtLineStartInNewBlockAfterWarningStartsNewPanel() {
++        val label = OcrResult(listOf(
++            TextLine("Warnings: Do not take with", 0.95f, block = 0),
++            TextLine("warfarin.", 0.95f, block = 1),
++            TextLine("Active ingredients: Ashwagandha 300 mg, Magnesium 100 mg", 0.95f, block = 2),
++        ))
++        val texts = parser.parse(label).map { it.text }
++        assertTrue("known and unknown actives must reach review: $texts", texts.containsAll(listOf("ashwagandha", "magnesium")))
++        assertFalse(texts.toString(), texts.any { it.contains("warfarin") })
++    }
++
+     /** Second review: "contains" inside a warning re-opened an active panel and added warfarin. */
+     @Test fun containsInsideWarningDoesNotReopenActivePanel() {
+         val texts = parser.parse(ocr(
