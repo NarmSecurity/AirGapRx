@@ -1,0 +1,6 @@
+APK SHA-256=E7C1CD52BF8FD6A032D072E6BC4F1657E91B2020788739BDCFBA9E85856AC47E
+package: com.airgaprx.app
+uses-permission: name='android.permission.CAMERA'
+permission: com.airgaprx.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission: name='com.airgaprx.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
+EXIT=0

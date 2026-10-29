@@ -1,0 +1,21 @@
+# Provenance for the 29 Oct 2026 report figures, 2026-10-29T12:55:31+13:00
+AVD=AirGapRx_API35 (Android 15, API 35, google_apis x86_64; emulator, not a phone)
+COMMIT=cf4eb4f (code tree clean)
+BUILD_SHA256=E7C1CD52BF8FD6A032D072E6BC4F1657E91B2020788739BDCFBA9E85856AC47E (build-20261028-172904; rebuild at HEAD in build-20261029-124326.log was up to date)
+INSTALLED=e7c1cd52bf8fd6a032d072e6bc4f1657e91b2020788739bdcfba9e85856ac47e  /data/app/~~v0rygdMKxxY_-QUOx7al_w==/com.airgaprx.app-9_6OojEYlKONvyRyj-UAPg==/base.apk
+NIGHT_MODE=Night mode: no
+LABELS_ON_DEVICE:
+02b1ef4eacd5e6ac2f7600d06126a2cfbcf89d64ac97408e92b0a8361fd7e104  /sdcard/Pictures/test-label-blurred.png
+d50fe817f5a38f84ae960a73c4c4dccf2301f62159adf8cfd80f117f61bea8b0  /sdcard/Pictures/test-label-misspelt-2.png
+715f733ed659cd6d4e1af37e05f072f031090ed56e2188c2e226dfe9c890d60b  /sdcard/Pictures/test-label-misspelt.png
+cbbc7ef20f1ec2d73fae6f3ba3f0bc9bfd96f52d5972c4e94dc389156110cf54  /sdcard/Pictures/test-label-sjw.png
+LOCAL_LABELS:
+cbbc7ef20f1ec2d73fae6f3ba3f0bc9bfd96f52d5972c4e94dc389156110cf54 *docs/evidence/emulator-20261024/test-label-sjw.png
+02b1ef4eacd5e6ac2f7600d06126a2cfbcf89d64ac97408e92b0a8361fd7e104 *docs/evidence/emulator-20261029/test-label-blurred.png
+d50fe817f5a38f84ae960a73c4c4dccf2301f62159adf8cfd80f117f61bea8b0 *docs/evidence/emulator-20261029/test-label-misspelt-2.png
+715f733ed659cd6d4e1af37e05f072f031090ed56e2188c2e226dfe9c890d60b *docs/evidence/emulator-20261029/test-label-misspelt.png
+TIMING:
+--------- beginning of main
+10-29 12:54:15.190  3846  3846 I AirGapRx.Timing: {ocr=1912, parse=30, normalise=1} total=1943ms
+10-29 12:54:15.194  3846  3846 I AirGapRx.Timing: 1793231655192,1793231229,gallery,Google sdk_gphone64_x86_64,15,2472,5,425706,,1912,30,1,,,Recognised,309404,per_operation
+CRASH_BUFFER:
