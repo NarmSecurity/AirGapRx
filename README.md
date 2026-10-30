@@ -157,12 +157,12 @@ never downloads anything itself.
 
 - **Implemented and reviewed in source** (two external code reviews).
 - **Core logic: verified under Gradle.** `./gradlew :core:test` passed 39/39 (0 failures, 0 skipped) with
-  Gradle 8.11.1 and JUnit 4.13.2 on JDK 21, on commit `eecc9f0`, 24 Oct 2026
+  Gradle 8.11.1 and JUnit 4.13.2 on JDK 21, on commit `d020971`, 24 Oct 2026
   ([log](docs/evidence/core-test-gradle-20261024-185955.log),
   [HTML report](docs/evidence/core-test-report-20261024-185955/index.html)). It was run with
   `--configure-on-demand` because the Android SDK was not yet installed, so `:app` was not configured. The
   same 39 tests had passed earlier with a JUnit substitute
-  ([`docs/evidence/core-tests-eecc9f0.txt`](docs/evidence/core-tests-eecc9f0.txt)). After the
+  ([`docs/evidence/core-tests-d020971.txt`](docs/evidence/core-tests-d020971.txt)). After the
   split-warning fix on 28 Oct 2026, all 44 tests passed under Gradle
   ([results](docs/evidence/warning-sentence-after-results-20261028-165405/)); after the name-search fix,
   48 ([results](docs/evidence/search-and-loading-after-core-results-20261028-172833/)). The first `:app`
