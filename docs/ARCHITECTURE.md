@@ -101,7 +101,7 @@ The split-warning regression failed before the fix under Gradle/JUnit with
 with zero failures, errors or skips (`docs/evidence/warning-split-after-results-20261028-150903/`),
 including both existing excipient regressions. The debug build and merged-manifest check passed
 (`docs/evidence/build-20261028-151059.log`). These results cover uncommitted changes based on
-`22a6fcf`; they do not establish held-out accuracy or performance on a phone.
+`2677270`; they do not establish held-out accuracy or performance on a phone.
 
 On the Android 15 emulator, the fixed APK read the same synthetic label and Review listed only
 St John's wort, with no warfarin (`docs/evidence/warning-split-emulator-review-20261028-151959.xml`).
@@ -152,7 +152,7 @@ cleanup intentionally removes; it was corrected to "complex" and the failed run 
 (`docs/evidence/label-edge-after-20261029-143428.log`). After the fixes, all 56 core tests and 4 app unit
 tests passed with zero failures, errors or skips (`docs/evidence/label-edge-after-20261029-143538.log`
 and its core/app results folders). The first-build script and merged-manifest check passed
-(`docs/evidence/build-20261029-143626.log`). These are uncommitted changes based on `efbfe92`, not
+(`docs/evidence/build-20261029-143626.log`). These are uncommitted changes based on `2fe6ac6`, not
 held-out accuracy results. Warning continuation still relies on textual cues; it does not identify
 every possible warning layout or wording.
 

@@ -1,0 +1,25 @@
+# Provenance for the 30 Oct 2026 report figures, 2026-10-30T21:46:31+13:00
+AVD=AirGapRx_API35 (Android 15, API 35, google_apis x86_64; emulator, not a phone)
+COMMIT=f25b7e6 (clean code tree; pushed to https://github.com/NarmSecurity/AirGapRx)
+BUILD_SHA256=59D2C1F7F3195830EC394C35DF80152C600972B84A48F5FFC40EC51C2B292AA8 (final-verification-20261030-213115.log)
+INSTALLED=59d2c1f7f3195830ec394c35df80152c600972b84a48f5ffc40ec51c2b292aa8  /data/app/~~kEug27WKvkl-ol7BvjWNAg==/com.airgaprx.app-b1cVU1wMbWKPaYqMqFBOvw==/base.apk
+NIGHT_MODE=Night mode: no
+LABELS_ON_DEVICE:
+cbbc7ef20f1ec2d73fae6f3ba3f0bc9bfd96f52d5972c4e94dc389156110cf54  /sdcard/Pictures/test-label-sjw.png
+02b1ef4eacd5e6ac2f7600d06126a2cfbcf89d64ac97408e92b0a8361fd7e104  /sdcard/Pictures/test-label-blurred.png
+715f733ed659cd6d4e1af37e05f072f031090ed56e2188c2e226dfe9c890d60b  /sdcard/Pictures/test-label-misspelt.png
+LOCAL_LABELS:
+cbbc7ef20f1ec2d73fae6f3ba3f0bc9bfd96f52d5972c4e94dc389156110cf54 *docs/evidence/emulator-20261024/test-label-sjw.png
+02b1ef4eacd5e6ac2f7600d06126a2cfbcf89d64ac97408e92b0a8361fd7e104 *docs/evidence/emulator-20261029/test-label-blurred.png
+715f733ed659cd6d4e1af37e05f072f031090ed56e2188c2e226dfe9c890d60b *docs/evidence/emulator-20261029/test-label-misspelt.png
+TIMING:
+--------- beginning of main
+10-30 21:39:25.713  6177  6177 I AirGapRx.Timing: {ocr=3972, parse=38, normalise=2} total=4012ms
+10-30 21:39:25.723  6177  6177 I AirGapRx.Timing: 1793349565722,1793349460,gallery,Google sdk_gphone64_x86_64,15,2472,2,104810,,3972,38,2,,,Recognised,296992,per_operation
+10-30 21:42:13.074  6177  6177 I AirGapRx.Timing: {ocr=2415, parse=9, normalise=1} total=2425ms
+10-30 21:42:13.079  6177  6177 I AirGapRx.Timing: 1793349733076,1793349460,gallery,Google sdk_gphone64_x86_64,15,2472,3,272165,,2415,9,1,,,Recognised,320328,per_operation
+10-30 21:43:46.991  6177  6177 I AirGapRx.Timing: {ocr=4477} total=4477ms
+10-30 21:43:46.996  6177  6177 I AirGapRx.Timing: 1793349826994,1793349460,gallery,Google sdk_gphone64_x86_64,15,2472,4,366082,,4477,,,,,NeedsRecapture,310072,per_operation
+10-30 21:45:17.359  6177  6177 I AirGapRx.Timing: {ocr=4213, parse=20, normalise=3} total=4236ms
+10-30 21:45:17.374  6177  6177 I AirGapRx.Timing: 1793349917371,1793349460,gallery,Google sdk_gphone64_x86_64,15,2472,5,456459,,4213,20,3,,,Recognised,307364,per_operation
+CRASH_BUFFER:

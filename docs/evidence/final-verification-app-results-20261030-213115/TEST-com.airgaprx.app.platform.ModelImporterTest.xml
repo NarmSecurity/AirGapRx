@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.airgaprx.app.platform.ModelImporterTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-30T08:32:07" hostname="MOFRADPC" time="0.181">
+  <properties/>
+  <testcase name="providerExceptionIsRejectedWithoutDeletingTheWorkingModel" classname="com.airgaprx.app.platform.ModelImporterTest" time="0.07"/>
+  <testcase name="publicationFailureRetainsThePreviousModel" classname="com.airgaprx.app.platform.ModelImporterTest" time="0.016"/>
+  <testcase name="successfulSameNamedReplacementPublishesTheCompleteFile" classname="com.airgaprx.app.platform.ModelImporterTest" time="0.009"/>
+  <testcase name="successfulReplacementKeepsPreviousUntilTheEntireStreamIsRead" classname="com.airgaprx.app.platform.ModelImporterTest" time="0.012"/>
+  <testcase name="unsafeDisplayNameCannotWriteOutsideTheModelDirectory" classname="com.airgaprx.app.platform.ModelImporterTest" time="0.044"/>
+  <testcase name="interruptedCopyRetainsSameNamedModelAndLeavesNoSelectablePartialFile" classname="com.airgaprx.app.platform.ModelImporterTest" time="0.01"/>
+  <testcase name="emptySelectionIsRejectedAndRetainsTheWorkingModel" classname="com.airgaprx.app.platform.ModelImporterTest" time="0.006"/>
+  <testcase name="unreadableSelectionRetainsTheWorkingModel" classname="com.airgaprx.app.platform.ModelImporterTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="com.airgaprx.app.data.MedicationRepositoryTest" tests="2" failures="0" errors="0" skipped="0" time="1.979" timestamp="2026-10-30T08:33:14" hostname="localhost">
+  <properties>
+    <property name="device" value="AirGapRx_API35(AVD) - 15" />
+    <property name="flavor" value="" />
+    <property name="project" value=":app" />
+  </properties>
+  <testcase name="successfulProductPublishesEveryKnownAndUncheckedIngredient" classname="com.airgaprx.app.data.MedicationRepositoryTest" time="1.035" />
+  <testcase name="failedSecondIngredientRollsBackTheWholeProduct" classname="com.airgaprx.app.data.MedicationRepositoryTest" time="0.438" />
+</testsuite>

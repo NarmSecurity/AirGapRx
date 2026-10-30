@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.airgaprx.app.ui.review.ReviewSaveTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-30T08:32:08" hostname="MOFRADPC" time="0.299">
+  <properties/>
+  <testcase name="productCannotBeSavedAgainWhileSaving" classname="com.airgaprx.app.ui.review.ReviewSaveTest" time="0.013"/>
+  <testcase name="wholeProductIsOneSaveAndRepeatedClicksAreIgnored" classname="com.airgaprx.app.ui.review.ReviewSaveTest" time="0.28"/>
+  <testcase name="completedProductCannotBeSavedAgain" classname="com.airgaprx.app.ui.review.ReviewSaveTest" time="0.0"/>
+  <testcase name="failedSaveAllowsAnExplicitRetry" classname="com.airgaprx.app.ui.review.ReviewSaveTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

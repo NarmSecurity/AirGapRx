@@ -1,0 +1,78 @@
+JAVA_HOME=C:\Program Files\Java\jdk-21
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:processResources NO-SOURCE
+> Task :core:processTestResources NO-SOURCE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:generateDebugResValues
+> Task :app:extractDeepLinksDebug
+
+> Task :app:processDebugMainManifest
+C:\Users\hosse\Desktop\AirGapRx\app\src\main\AndroidManifest.xml:17:5-96 Warning:
+	uses-permission#android.permission.ACCESS_WIFI_STATE was tagged at AndroidManifest.xml:17 to remove other declarations but no other declaration present
+C:\Users\hosse\Desktop\AirGapRx\app\src\main\AndroidManifest.xml:18:5-99 Warning:
+	uses-permission#android.permission.CHANGE_NETWORK_STATE was tagged at AndroidManifest.xml:18 to remove other declarations but no other declaration present
+C:\Users\hosse\Desktop\AirGapRx\app\src\main\AndroidManifest.xml:19:5-96 Warning:
+	uses-permission#android.permission.CHANGE_WIFI_STATE was tagged at AndroidManifest.xml:19 to remove other declarations but no other declaration present
+
+> Task :app:processDebugManifest
+
+> Task :app:verifyNoNetworkPermissionDebug
+R1 OK: merged Debug manifest declares no network permission
+
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:checkDebugAarMetadata
+> Task :app:packageDebugResources
+> Task :app:javaPreCompileDebug
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:mergeDebugResources
+> Task :app:mergeDebugJniLibFolders
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:processDebugManifestForPackage
+> Task :app:checkDebugDuplicateClasses
+> Task :core:compileKotlin
+> Task :core:compileJava NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar
+> Task :app:processDebugResources
+> Task :app:mergeDebugNativeLibs
+> Task :app:mergeLibDexDebug
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libimage_processing_util_jni.so, libllm_inference_engine_jni.so, libmlkit_google_ocr_pipeline.so, libsqlcipher.so, libsurface_util_jni.so.
+
+> Task :core:compileTestKotlin
+> Task :core:compileTestJava NO-SOURCE
+> Task :core:testClasses UP-TO-DATE
+> Task :core:test
+> Task :app:mergeExtDexDebug
+
+> Task :app:compileDebugKotlin
+w: file:///C:/Users/hosse/Desktop/AirGapRx/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewScreen.kt:139:45 'val Icons.Outlined.HelpCenter: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.HelpCenter.
+
+> Task :app:compileDebugJavaWithJavac
+> Task :app:dexBuilderDebug
+> Task :app:processDebugJavaRes
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeDebugJavaResource
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+
+BUILD SUCCESSFUL in 29s
+42 actionable tasks: 42 executed
+EXIT=0

@@ -20,3 +20,7 @@ kb/sources/rxnorm/
 
 # Evaluation media (label photos may show personal details)
 docs/evaluation/photos/
+
+# Course exemplars are other students' work: keep them local only
+docs/course/exemplars/
+docs/course/*Exemplar*

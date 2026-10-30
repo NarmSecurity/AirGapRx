@@ -1,0 +1,41 @@
+# WCAG 2.1 contrast of configured text colour pairs, from app/src/main/kotlin/com/airgaprx/app/ui/theme/Theme.kt
+# pair	foreground	background	ratio	AA normal text (4.5:1)
+Light: onPrimary on primary	#FFFFFF	#0F3D3E	11.95:1	pass
+Light: onPrimaryContainer on primaryContainer	#0F3D3E	#DCEBE7	9.72:1	pass
+Light: onSecondary on secondary	#FFFFFF	#3F5A56	7.48:1	pass
+Light: onSecondaryContainer on secondaryContainer	#17201F	#E3EAE8	13.62:1	pass
+Light: onTertiary on tertiary	#FFFFFF	#6B5900	6.88:1	pass
+Light: onTertiaryContainer on tertiaryContainer	#3A2E00	#FFF1C2	11.85:1	pass
+Light: onBackground on background	#17201F	#F3F5F2	15.17:1	pass
+Light: onSurface on surface	#17201F	#F3F5F2	15.17:1	pass
+Light: onSurfaceVariant on surfaceVariant	#4A5654	#E2E7E4	6.10:1	pass
+Light: onError on error	#FFFFFF	#B3261E	6.54:1	pass
+Light: onErrorContainer on errorContainer	#410E0B	#F9DEDC	12.77:1	pass
+Light: error on surface	#B3261E	#F3F5F2	5.96:1	pass
+Light: error on surfaceContainerLowest	#B3261E	#FFFFFF	6.54:1	pass
+Light: onSurfaceVariant on surface	#4A5654	#F3F5F2	6.96:1	pass
+Light: onSurfaceVariant on surfaceContainerLowest	#4A5654	#FFFFFF	7.64:1	pass
+Light: primary on surface	#0F3D3E	#F3F5F2	10.90:1	pass
+Light: primary on surfaceContainerLowest	#0F3D3E	#FFFFFF	11.95:1	pass
+Dark: onPrimary on primary	#00201B	#7CCFB8	9.39:1	pass
+Dark: onPrimaryContainer on primaryContainer	#CDEBE3	#1F4A45	7.81:1	pass
+Dark: onSecondary on secondary	#13302B	#A9C9C2	7.96:1	pass
+Dark: onSecondaryContainer on secondaryContainer	#DCE5E2	#24332F	10.29:1	pass
+Dark: onTertiary on tertiary	#3A2E00	#E9C449	7.93:1	pass
+Dark: onTertiaryContainer on tertiaryContainer	#FFE58A	#3D3300	10.06:1	pass
+Dark: onBackground on background	#E6ECEA	#0E1716	15.22:1	pass
+Dark: onSurface on surface	#E6ECEA	#0E1716	15.22:1	pass
+Dark: onSurfaceVariant on surfaceVariant	#A9B6B3	#2A3835	5.85:1	pass
+Dark: onError on error	#690005	#FFB4AB	7.72:1	pass
+Dark: onErrorContainer on errorContainer	#FFDAD6	#93000A	7.24:1	pass
+Dark: error on surface	#FFB4AB	#0E1716	10.73:1	pass
+Dark: error on surfaceContainerLowest	#FFB4AB	#142120	9.75:1	pass
+Dark: onSurfaceVariant on surface	#A9B6B3	#0E1716	8.70:1	pass
+Dark: onSurfaceVariant on surfaceContainerLowest	#A9B6B3	#142120	7.91:1	pass
+Dark: primary on surface	#7CCFB8	#0E1716	9.95:1	pass
+Dark: primary on surfaceContainerLowest	#7CCFB8	#142120	9.05:1	pass
+Sticker: onMajor on major	#FFFFFF	#C8102E	5.88:1	pass
+Sticker: onModerate on moderate	#1C1B14	#F5C400	10.51:1	pass
+Sticker: onMinor on minor	#0E3A5B	#D6E6F2	9.27:1	pass
+Sticker: onUnknown on unknown	#2E3836	#E4E7E6	9.72:1	pass
+# 38 pairs; lowest 5.85:1 (Dark: onSurfaceVariant on surfaceVariant)

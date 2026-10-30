@@ -1,0 +1,18 @@
+# GitHub Actions run for commit f25b7e6, fetched 2026-10-30T21:49:05+13:00 from the public API
+JOB build completed success 2026-10-30T08:36:52Z 2026-10-30T08:40:31Z GitHub Actions 1000000000 ['ubuntu-latest']
+  STEP 1 Set up job success
+  STEP 2 Run actions/checkout@v4 success
+  STEP 3 Run actions/setup-java@v4 success
+  STEP 4 Run gradle/actions/setup-gradle@v4 success
+  STEP 5 Domain unit tests (:core) success
+  STEP 6 Verify no network permission in merged manifests (R1) success
+  STEP 7 Build debug APK (development knowledge base, labelled in-app) success
+  STEP 8 Check APK permissions with aapt2 (R1) success
+  STEP 9 Upload test report success
+  STEP 10 Upload debug APK success
+  STEP 18 Post Run gradle/actions/setup-gradle@v4 success
+  STEP 19 Post Run actions/setup-java@v4 success
+  STEP 20 Post Run actions/checkout@v4 success
+  STEP 21 Complete job success
+JOB release completed skipped 2026-10-30T08:40:31Z 2026-10-30T08:40:31Z None ['ubuntu-latest']
+URL https://github.com/NarmSecurity/AirGapRx/actions/runs/41027624407

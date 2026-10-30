@@ -1,0 +1,10 @@
+DATE=2026-10-24T19:51:02+13:00
+HEAD=56f57b1; app, core and Gradle files clean against HEAD: []
+APK SHA-256=6A5C457D1F7441CA4C8F7D30252D8F0AE1006229757333CAFA7871592F27A6F6
+Permissions declared by app/build/outputs/apk/debug/app-debug.apk:
+package: com.airgaprx.app
+uses-permission: name='android.permission.CAMERA'
+permission: com.airgaprx.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission: name='com.airgaprx.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
+PASS: no network permission declared (R1)
+EXIT=0
