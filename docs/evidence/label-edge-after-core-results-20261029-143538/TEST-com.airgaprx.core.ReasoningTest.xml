@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.airgaprx.core.ReasoningTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-29T01:35:52" hostname="MOFRADPC" time="0.035">
+  <properties/>
+  <testcase name="explanationCarriesProvenanceAndDisclaimer" classname="com.airgaprx.core.ReasoningTest" time="0.024"/>
+  <testcase name="noInteractionsIsAnExplicitEmptyResult" classname="com.airgaprx.core.ReasoningTest" time="0.006"/>
+  <testcase name="ranksBySeverityAndMarksOnlyMajorInterruptive" classname="com.airgaprx.core.ReasoningTest" time="0.003"/>
+  <testcase name="detectsDuplicateIngredientAcrossProducts" classname="com.airgaprx.core.ReasoningTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

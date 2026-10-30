@@ -109,6 +109,55 @@ class LabelParserTest {
         assertEquals(listOf("paracetamol"), texts)
     }
 
+    @Test fun warningContinuationAfterSentenceEndDoesNotAddMedicine() {
+        for (continuation in listOf("Or aspirin.", "And aspirin.", "\u2022 Or aspirin.")) {
+            val label = OcrResult(listOf(
+                TextLine("Each tablet contains Paracetamol 500 mg", 0.95f, block = 0),
+                TextLine("Warnings: Do not take with warfarin.", 0.95f, block = 1),
+                TextLine(continuation, 0.95f, block = 2),
+                TextLine("Hypericum perforatum (St John's Wort) 300 mg", 0.95f, block = 3),
+            ))
+            val texts = parser.parse(label).map { it.text }
+            assertFalse("warning continuation must not add aspirin: $texts", texts.any { it.contains("aspirin") })
+            assertFalse(texts.toString(), texts.any { it.contains("warfarin") })
+            assertTrue(texts.toString(), texts.contains("paracetamol"))
+            assertTrue("a later active must still reach review: $texts", texts.any { it.contains("wort") })
+        }
+    }
+
+    @Test fun strengthFieldDoesNotBecomeAnIngredient() {
+        val labels = listOf(
+            ocr("Each tablet contains:", "Warfarn", "Strength: 5 mg"),
+            ocr("Each tablet contains: Warfarn; Strength: 5 mg; Ashwagandha 300 mg"),
+        )
+        for (label in labels) {
+            val texts = parser.parse(label).map { it.text }
+            assertFalse("a field label is not an ingredient: $texts", texts.contains("strength"))
+            assertTrue("the misspelt active must reach review: $texts", texts.contains("warfarn"))
+        }
+        assertTrue(parser.parse(labels[1]).any { it.text.contains("ashwagandha") })
+    }
+
+    @Test fun strengthFieldKeepsUnknownValuesAndNamesWithoutAFieldColon() {
+        val texts = parser.parse(ocr(
+            "Active ingredients:",
+            "Strength: Ashwagandha 300 mg",
+            "Strength complex 200 mg",
+        )).map { it.text }
+        assertTrue(texts.toString(), texts.containsAll(listOf("ashwagandha", "strength complex")))
+        assertFalse(texts.toString(), texts.contains("strength"))
+    }
+
+    @Test fun conjunctionPrefixesDoNotHideActivesAfterFinishedWarning() {
+        for (active in listOf("Oral Eltroxin 100 microgram", "Andrographis. Each tablet contains Eltroxin 100 microgram")) {
+            val label = OcrResult(listOf(
+                TextLine("Warnings: Do not take with warfarin.", 0.95f, block = 0),
+                TextLine(active, 0.95f, block = 1),
+            ))
+            assertTrue(active, parser.parse(label).any { it.text.contains("eltroxin") })
+        }
+    }
+
     @Test fun headerAtLineStartInNewBlockAfterWarningStartsNewPanel() {
         val label = OcrResult(listOf(
             TextLine("Warnings: Do not take with", 0.95f, block = 0),
@@ -196,6 +245,28 @@ class LabelParserTest {
 class RecognitionPipelineTest {
     private val lexicon = Lexicon(Fixtures.kb())
     private val pipeline = RecognitionPipeline(LexiconLabelParser(lexicon), IngredientNormaliser(lexicon))
+
+    @Test fun joinedDoseAndStrengthFieldReachReviewAsOneAmbiguousIngredient() {
+        for (active in listOf("Warfarn5 mg", "Warfarn5mg", "Warfarn2.5 mg", "Warfarn2,5mg")) {
+            val out = pipeline.process(OcrResult(listOf(
+                TextLine("Each tablet contains:", 0.95f),
+                TextLine(active, 0.95f),
+                TextLine("Strength: 5 mg", 0.95f),
+            )))
+            assertTrue(out.toString(), out is RecognitionOutcome.Recognised)
+            val item = (out as RecognitionOutcome.Recognised).items.single()
+            assertTrue(item.toString(), item.resolution is Resolution.Ambiguous)
+            assertEquals(Fixtures.warfarin, (item.resolution as Resolution.Ambiguous).options.first().ingredient)
+        }
+    }
+
+    @Test fun joinedDoseOnFrontOfPackStillReachesReview() {
+        val out = pipeline.process(OcrResult(listOf(TextLine("Warfarn5 mg tablets", 0.95f))))
+        assertTrue(out.toString(), out is RecognitionOutcome.Recognised)
+        val item = (out as RecognitionOutcome.Recognised).items.single()
+        assertTrue(item.toString(), item.resolution is Resolution.Ambiguous)
+        assertEquals(Fixtures.warfarin, (item.resolution as Resolution.Ambiguous).options.first().ingredient)
+    }
 
     @Test fun lowConfidenceCaptureAsksForRetake() {
         val out = pipeline.process(OcrResult(listOf(TextLine("Warfar1n 5mg tab1ets", 0.31f))))

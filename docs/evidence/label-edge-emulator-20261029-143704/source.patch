@@ -1,0 +1,220 @@
+diff --git a/core/src/main/kotlin/com/airgaprx/core/normalise/Text.kt b/core/src/main/kotlin/com/airgaprx/core/normalise/Text.kt
+index 358f018..faf44f2 100644
+--- a/core/src/main/kotlin/com/airgaprx/core/normalise/Text.kt
++++ b/core/src/main/kotlin/com/airgaprx/core/normalise/Text.kt
+@@ -13,6 +13,10 @@ object Text {
+         "mg", "mcg", "ug", "g", "kg", "iu", "ml", "l", "x", "microgram", "micrograms", "milligram",
+         "milligrams", "gram", "grams", "unit", "units",
+     )
++    private val doseAmount = Regex(
++        "\\d+(?:[.,]\\d+)?\\s*(?:" + units.sortedByDescending { it.length }.joinToString("|") + ")\\b",
++        RegexOption.IGNORE_CASE,
++    )
+     private val fillerWords = setOf(
+         "tablet", "tablets", "tab", "tabs", "capsule", "capsules", "caps", "softgel", "softgels",
+         "each", "per", "contains", "equivalent", "to", "of", "as", "and", "with", "the", "a", "film",
+@@ -34,12 +38,15 @@ object Text {
+ 
+     fun isFiller(token: String): Boolean = token in fillerWords || token in units || number.matches(token)
+ 
++    /** Remove amounts before tokenising, including OCR-joined names and decimal strengths. */
++    internal fun withoutDoseAmounts(raw: String): String = doseAmount.replace(raw, " ")
++
+     /**
+      * Removes dose amounts and packaging words: "Calcium carbonate 1250 mg tablets" -> "calcium carbonate".
+      * A bare number is only treated as a dose when a unit follows it, so "omega 3" and "vitamin b 12" survive.
+      */
+     fun stripDoses(raw: String): String {
+-        val toks = tokens(raw)
++        val toks = tokens(withoutDoseAmounts(raw))
+         val out = ArrayList<String>(toks.size)
+         var i = 0
+         while (i < toks.size) {
+diff --git a/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt b/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt
+index a700094..f5049a0 100644
+--- a/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt
++++ b/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt
+@@ -23,9 +23,10 @@ import com.airgaprx.core.normalise.Text
+  * Modes are not permanent. A later header switches mode again, and every new OCR text block
+  * starts back in ACTIVE, so an active panel that OCR reads *after* an excipient list or a warning
+  * is still parsed. The one exception is an unfinished warning sentence ("Do not take with"): OCR
+- * can split a warning before the medicine it names, so WARNING carries into the next block until
+- * the sentence ends. The design choice is to fail visibly: when in doubt, text is kept and shown
+- * on the Review screen rather than dropped.
++ * can split a warning before the medicine it names. A block starting with "or" or "and" also
++ * continues the warning, even after a sentence end. Otherwise the new block starts in ACTIVE.
++ * The design choice is to fail visibly: when in doubt, text is kept and shown on the Review screen
++ * rather than dropped.
+  */
+ class LexiconLabelParser(
+     private val lexicon: Lexicon,
+@@ -73,9 +74,11 @@ class LexiconLabelParser(
+                 block = line.block
+                 // A new OCR block is a layout boundary: skipped modes end here, but an open
+                 // ingredient panel may continue into it, and so may a warning whose sentence is
+-                // unfinished ("Do not take with" / "warfarin").
+-                val unfinishedWarning = mode == Mode.WARNING && !SENTENCE_END.containsMatchIn(previous)
+-                if (mode != Mode.ACTIVE && !unfinishedWarning) { mode = Mode.ACTIVE; inPanel = false }
++                // unfinished ("Do not take with" / "warfarin") or explicitly continued
++                // ("Do not take with warfarin." / "Or aspirin.").
++                val continuingWarning = mode == Mode.WARNING &&
++                    (!SENTENCE_END.containsMatchIn(previous) || WARNING_CONTINUATION.containsMatchIn(text))
++                if (mode != Mode.ACTIVE && !continuingWarning) { mode = Mode.ACTIVE; inPanel = false }
+             }
+             previous = text
+             if (inPanel && ++panelLines > MAX_PANEL_LINES) inPanel = false
+@@ -122,7 +125,7 @@ class LexiconLabelParser(
+     }
+ 
+     private fun panelMentions(panel: List<Segment>): List<Mention> =
+-        panel.flatMap { it.text.split(SEPARATORS) }
++        panel.flatMap { Text.withoutDoseAmounts(it.text).replace(STRENGTH_FIELD_LABEL, "$1").split(SEPARATORS) }
+             .map { Text.stripDoses(it) }
+             .filter { seg -> seg.length >= 3 && seg.any { it.isLetter() } && seg.split(' ').size <= 5 }
+             .map { Mention(it, MentionSource.INGREDIENT_SECTION) }
+@@ -131,7 +134,7 @@ class LexiconLabelParser(
+         val out = ArrayList<Mention>()
+         val maxN = lexicon.maxTermTokens
+         for (line in lines) {
+-            val toks = Text.tokens(line)
++            val toks = Text.tokens(Text.withoutDoseAmounts(line))
+             var i = 0
+             while (i < toks.size) {
+                 val maxHere = minOf(maxN, toks.size - i)
+@@ -159,6 +162,10 @@ class LexiconLabelParser(
+     companion object {
+         /** Safety valve for a panel header that OCR never closes; long panels (20+ lines) are rare. */
+         private const val MAX_PANEL_LINES = 30
++        /** Whole conjunctions, optionally preceded by a bullet or opening quote/bracket. */
++        private val WARNING_CONTINUATION = Regex("""^\s*(?:[•·*-]\s*)?["'“‘(]?\s*(?:or|and)\b""", RegexOption.IGNORE_CASE)
++        /** Remove the field label, retaining its value and any following unknown active. */
++        private val STRENGTH_FIELD_LABEL = Regex("""(^|[,;•·|])\s*strength\s*:""", RegexOption.IGNORE_CASE)
+         /** A line that ends a sentence, allowing closing brackets or quotes after the mark. */
+         private val SENTENCE_END = Regex("[.!?][)\\]\"'”’]*\\s*$")
+         private val SEPARATORS = Regex("[,;:•·|/()\\[\\]]|\\s+and\\s+(?=[a-z])|\\s+\\+\\s+", RegexOption.IGNORE_CASE)
+diff --git a/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt b/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt
+index 2ed739c..eb759e2 100644
+--- a/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt
++++ b/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt
+@@ -30,6 +30,17 @@ class TextTest {
+         assertEquals(1, Text.editDistance("warfarin", "wrafarin"))
+         assertEquals(0, Text.editDistance("x", "x"))
+     }
++
++    @Test fun joinedDosesAreStrippedWithoutChangingNumericNames() {
++        for (label in listOf("Warfarn5 mg", "Warfarn5mg", "Warfarn2.5 mg", "Warfarn2,5mg")) {
++            assertEquals(label, "warfarn", Text.stripDoses(label))
++        }
++        assertEquals("vitamin b12", Text.stripDoses("Vitamin B12 500mcg"))
++        assertEquals("omega 3 fish oil", Text.stripDoses("Omega-3 fish oil1000mg"))
++        assertEquals("coenzyme q10", Text.stripDoses("Coenzyme Q10"))
++        assertEquals("vitamin b 12", Text.stripDoses("Vitamin B 12"))
++        assertEquals("5 htp", Text.stripDoses("5-HTP100mg"))
++    }
+ }
+ 
+ class LexiconTest {
+@@ -91,6 +102,14 @@ class IngredientNormaliserTest {
+         assertEquals(Fixtures.warfarin, (r as Resolution.Ambiguous).options.first().ingredient)
+     }
+ 
++    @Test fun joinedDoseNearMissOffersTheSameCandidatesAsTheNameAlone() {
++        val expected = normaliser.normalise(m("warfarn")).resolution
++        assertTrue(expected is Resolution.Ambiguous)
++        for (label in listOf("warfarn5 mg", "warfarn5mg", "warfarn2.5 mg")) {
++            assertEquals(label, expected, normaliser.normalise(m(label)).resolution)
++        }
++    }
++
+     @Test fun unknownIngredientIsEscalated() {
+         assertEquals(Resolution.Unrecognised, normaliser.normalise(m("Ashwagandha")).resolution)
+     }
+diff --git a/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt b/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt
+index 90205ae..9dd0d3b 100644
+--- a/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt
++++ b/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt
+@@ -109,6 +109,55 @@ class LabelParserTest {
+         assertEquals(listOf("paracetamol"), texts)
+     }
+ 
++    @Test fun warningContinuationAfterSentenceEndDoesNotAddMedicine() {
++        for (continuation in listOf("Or aspirin.", "And aspirin.", "\u2022 Or aspirin.")) {
++            val label = OcrResult(listOf(
++                TextLine("Each tablet contains Paracetamol 500 mg", 0.95f, block = 0),
++                TextLine("Warnings: Do not take with warfarin.", 0.95f, block = 1),
++                TextLine(continuation, 0.95f, block = 2),
++                TextLine("Hypericum perforatum (St John's Wort) 300 mg", 0.95f, block = 3),
++            ))
++            val texts = parser.parse(label).map { it.text }
++            assertFalse("warning continuation must not add aspirin: $texts", texts.any { it.contains("aspirin") })
++            assertFalse(texts.toString(), texts.any { it.contains("warfarin") })
++            assertTrue(texts.toString(), texts.contains("paracetamol"))
++            assertTrue("a later active must still reach review: $texts", texts.any { it.contains("wort") })
++        }
++    }
++
++    @Test fun strengthFieldDoesNotBecomeAnIngredient() {
++        val labels = listOf(
++            ocr("Each tablet contains:", "Warfarn", "Strength: 5 mg"),
++            ocr("Each tablet contains: Warfarn; Strength: 5 mg; Ashwagandha 300 mg"),
++        )
++        for (label in labels) {
++            val texts = parser.parse(label).map { it.text }
++            assertFalse("a field label is not an ingredient: $texts", texts.contains("strength"))
++            assertTrue("the misspelt active must reach review: $texts", texts.contains("warfarn"))
++        }
++        assertTrue(parser.parse(labels[1]).any { it.text.contains("ashwagandha") })
++    }
++
++    @Test fun strengthFieldKeepsUnknownValuesAndNamesWithoutAFieldColon() {
++        val texts = parser.parse(ocr(
++            "Active ingredients:",
++            "Strength: Ashwagandha 300 mg",
++            "Strength complex 200 mg",
++        )).map { it.text }
++        assertTrue(texts.toString(), texts.containsAll(listOf("ashwagandha", "strength complex")))
++        assertFalse(texts.toString(), texts.contains("strength"))
++    }
++
++    @Test fun conjunctionPrefixesDoNotHideActivesAfterFinishedWarning() {
++        for (active in listOf("Oral Eltroxin 100 microgram", "Andrographis. Each tablet contains Eltroxin 100 microgram")) {
++            val label = OcrResult(listOf(
++                TextLine("Warnings: Do not take with warfarin.", 0.95f, block = 0),
++                TextLine(active, 0.95f, block = 1),
++            ))
++            assertTrue(active, parser.parse(label).any { it.text.contains("eltroxin") })
++        }
++    }
++
+     @Test fun headerAtLineStartInNewBlockAfterWarningStartsNewPanel() {
+         val label = OcrResult(listOf(
+             TextLine("Warnings: Do not take with", 0.95f, block = 0),
+@@ -197,6 +246,28 @@ class RecognitionPipelineTest {
+     private val lexicon = Lexicon(Fixtures.kb())
+     private val pipeline = RecognitionPipeline(LexiconLabelParser(lexicon), IngredientNormaliser(lexicon))
+ 
++    @Test fun joinedDoseAndStrengthFieldReachReviewAsOneAmbiguousIngredient() {
++        for (active in listOf("Warfarn5 mg", "Warfarn5mg", "Warfarn2.5 mg", "Warfarn2,5mg")) {
++            val out = pipeline.process(OcrResult(listOf(
++                TextLine("Each tablet contains:", 0.95f),
++                TextLine(active, 0.95f),
++                TextLine("Strength: 5 mg", 0.95f),
++            )))
++            assertTrue(out.toString(), out is RecognitionOutcome.Recognised)
++            val item = (out as RecognitionOutcome.Recognised).items.single()
++            assertTrue(item.toString(), item.resolution is Resolution.Ambiguous)
++            assertEquals(Fixtures.warfarin, (item.resolution as Resolution.Ambiguous).options.first().ingredient)
++        }
++    }
++
++    @Test fun joinedDoseOnFrontOfPackStillReachesReview() {
++        val out = pipeline.process(OcrResult(listOf(TextLine("Warfarn5 mg tablets", 0.95f))))
++        assertTrue(out.toString(), out is RecognitionOutcome.Recognised)
++        val item = (out as RecognitionOutcome.Recognised).items.single()
++        assertTrue(item.toString(), item.resolution is Resolution.Ambiguous)
++        assertEquals(Fixtures.warfarin, (item.resolution as Resolution.Ambiguous).options.first().ingredient)
++    }
++
+     @Test fun lowConfidenceCaptureAsksForRetake() {
+         val out = pipeline.process(OcrResult(listOf(TextLine("Warfar1n 5mg tab1ets", 0.31f))))
+         assertTrue(out is RecognitionOutcome.NeedsRecapture)

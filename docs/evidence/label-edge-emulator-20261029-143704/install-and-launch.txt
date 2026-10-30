@@ -1,0 +1,31 @@
+**********************
+PowerShell transcript start
+Start time: 20261029143738
+Username: MOFRADPC\hosse
+RunAs User: MOFRADPC\hosse
+Configuration Name: 
+Machine: MOFRADPC (Microsoft Windows NT 10.0.26300.0)
+Host Application: pwsh.dll -Command try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}
+$adb = 'C:\Users\hosse\AppData\Local\Android\Sdk\platform-tools\adb.exe'; $dir = 'docs/evidence/label-edge-emulator-20261029-143704'; Start-Transcript -LiteralPath "$dir/install-and-launch.txt" | Out-Null; & $adb -s emulator-5554 install -r 'app/build/outputs/apk/debug/app-debug.apk'; if ($LASTEXITCODE -ne 0) { Stop-Transcript; throw 'APK install failed' }; & $adb -s emulator-5554 push "$dir/warning-continuation-label.png" /sdcard/Pictures/airgaprx-warning-continuation-20261029-143704.png; & $adb -s emulator-5554 shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/airgaprx-warning-continuation-20261029-143704.png; & $adb -s emulator-5554 shell am force-stop com.airgaprx.app; & $adb -s emulator-5554 shell am start -W -n com.airgaprx.app/.MainActivity; & $adb -s emulator-5554 shell uiautomator dump /sdcard/airgaprx-label-edge-shelf-20261029-143704.xml; & $adb -s emulator-5554 pull /sdcard/airgaprx-label-edge-shelf-20261029-143704.xml "$dir/shelf-before.xml"; Stop-Transcript | Out-Null
+Process ID: 44232
+PSVersion: 7.6.5
+PSEdition: Core
+GitCommitId: 7.6.5
+OS: Microsoft Windows 10.0.26300
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+
+
+
+
+
+
+
+**********************
+PowerShell transcript end
+End time: 20261029143820
+**********************

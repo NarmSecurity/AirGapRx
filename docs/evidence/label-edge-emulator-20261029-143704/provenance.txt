@@ -1,0 +1,24 @@
+BASE_HEAD=250d845
+STATE=uncommitted label-edge fixes
+AVD=AirGapRx_API35; Android 15 API 35; emulator only
+INSTALLED_APK:
+6b0eb6a5d1004c090557f788722c92ad9d255215d4a5bb1c4407d2480f10a73e  /data/app/~~HrOCbsYlM1qQmGvDWBkgoQ==/com.airgaprx.app-IE1u8fCHI1y0AxBBaDJkeA==/base.apk
+DEVICE_LABEL_HASHES:
+715f733ed659cd6d4e1af37e05f072f031090ed56e2188c2e226dfe9c890d60b  /sdcard/Pictures/test-label-misspelt.png
+d50fe817f5a38f84ae960a73c4c4dccf2301f62159adf8cfd80f117f61bea8b0  /sdcard/Pictures/test-label-misspelt-2.png
+cbbc7ef20f1ec2d73fae6f3ba3f0bc9bfd96f52d5972c4e94dc389156110cf54  /sdcard/Pictures/test-label-sjw.png
+9b92c1ca8966b7672dac158efa79baa747d9b4639bd59f9a728a359abe7ad655  /sdcard/Pictures/airgaprx-warning-continuation-20261029-143704.png
+CRASH_BUFFER:
+
+TIMING_LOG_NOT_PHONE_PERFORMANCE:
+--------- beginning of main
+10-29 12:54:15.190  3846  3846 I AirGapRx.Timing: {ocr=1912, parse=30, normalise=1} total=1943ms
+10-29 12:54:15.194  3846  3846 I AirGapRx.Timing: 1793231655192,1793231229,gallery,Google sdk_gphone64_x86_64,15,2472,5,425706,,1912,30,1,,,Recognised,309404,per_operation
+10-29 14:39:35.268  7861  7861 I AirGapRx.Timing: {ocr=6579, parse=99, normalise=7} total=6685ms
+10-29 14:39:35.292  7861  7861 I AirGapRx.Timing: 1793237975284,1793237884,gallery,Google sdk_gphone64_x86_64,15,2472,1,90597,,6579,99,7,,,Recognised,294244,per_operation
+10-29 14:41:12.637  7861  7861 I AirGapRx.Timing: {ocr=5301, parse=27, normalise=1} total=5329ms
+10-29 14:41:12.650  7861  7861 I AirGapRx.Timing: 1793238072647,1793237884,gallery,Google sdk_gphone64_x86_64,15,2472,2,187958,,5301,27,1,,,Recognised,316360,per_operation
+10-29 14:42:45.768  7861  7861 I AirGapRx.Timing: {ocr=5964, parse=7, normalise=1} total=5972ms
+10-29 14:42:45.773  7861  7861 I AirGapRx.Timing: 1793238165770,1793237884,gallery,Google sdk_gphone64_x86_64,15,2472,3,281082,,5964,7,1,,,Recognised,309928,per_operation
+10-29 14:43:48.113  7861  7861 I AirGapRx.Timing: {ocr=7376, parse=53, normalise=0} total=7429ms
+10-29 14:43:48.122  7861  7861 I AirGapRx.Timing: 1793238228118,1793237884,gallery,Google sdk_gphone64_x86_64,15,2472,4,343431,,7376,53,0,,,Recognised,305704,per_operation

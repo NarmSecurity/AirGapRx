@@ -13,6 +13,10 @@ object Text {
         "mg", "mcg", "ug", "g", "kg", "iu", "ml", "l", "x", "microgram", "micrograms", "milligram",
         "milligrams", "gram", "grams", "unit", "units",
     )
+    private val doseAmount = Regex(
+        "\\d+(?:[.,]\\d+)?\\s*(?:" + units.sortedByDescending { it.length }.joinToString("|") + ")\\b",
+        RegexOption.IGNORE_CASE,
+    )
     private val fillerWords = setOf(
         "tablet", "tablets", "tab", "tabs", "capsule", "capsules", "caps", "softgel", "softgels",
         "each", "per", "contains", "equivalent", "to", "of", "as", "and", "with", "the", "a", "film",
@@ -34,12 +38,15 @@ object Text {
 
     fun isFiller(token: String): Boolean = token in fillerWords || token in units || number.matches(token)
 
+    /** Remove amounts before tokenising, including OCR-joined names and decimal strengths. */
+    internal fun withoutDoseAmounts(raw: String): String = doseAmount.replace(raw, " ")
+
     /**
      * Removes dose amounts and packaging words: "Calcium carbonate 1250 mg tablets" -> "calcium carbonate".
      * A bare number is only treated as a dose when a unit follows it, so "omega 3" and "vitamin b 12" survive.
      */
     fun stripDoses(raw: String): String {
-        val toks = tokens(raw)
+        val toks = tokens(withoutDoseAmounts(raw))
         val out = ArrayList<String>(toks.size)
         var i = 0
         while (i < toks.size) {

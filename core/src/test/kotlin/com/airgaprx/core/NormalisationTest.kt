@@ -30,6 +30,17 @@ class TextTest {
         assertEquals(1, Text.editDistance("warfarin", "wrafarin"))
         assertEquals(0, Text.editDistance("x", "x"))
     }
+
+    @Test fun joinedDosesAreStrippedWithoutChangingNumericNames() {
+        for (label in listOf("Warfarn5 mg", "Warfarn5mg", "Warfarn2.5 mg", "Warfarn2,5mg")) {
+            assertEquals(label, "warfarn", Text.stripDoses(label))
+        }
+        assertEquals("vitamin b12", Text.stripDoses("Vitamin B12 500mcg"))
+        assertEquals("omega 3 fish oil", Text.stripDoses("Omega-3 fish oil1000mg"))
+        assertEquals("coenzyme q10", Text.stripDoses("Coenzyme Q10"))
+        assertEquals("vitamin b 12", Text.stripDoses("Vitamin B 12"))
+        assertEquals("5 htp", Text.stripDoses("5-HTP100mg"))
+    }
 }
 
 class LexiconTest {
@@ -89,6 +100,14 @@ class IngredientNormaliserTest {
         val r = normaliser.normalise(m("warfarn")).resolution
         assertTrue("expected Ambiguous but was $r", r is Resolution.Ambiguous)
         assertEquals(Fixtures.warfarin, (r as Resolution.Ambiguous).options.first().ingredient)
+    }
+
+    @Test fun joinedDoseNearMissOffersTheSameCandidatesAsTheNameAlone() {
+        val expected = normaliser.normalise(m("warfarn")).resolution
+        assertTrue(expected is Resolution.Ambiguous)
+        for (label in listOf("warfarn5 mg", "warfarn5mg", "warfarn2.5 mg")) {
+            assertEquals(label, expected, normaliser.normalise(m(label)).resolution)
+        }
     }
 
     @Test fun unknownIngredientIsEscalated() {

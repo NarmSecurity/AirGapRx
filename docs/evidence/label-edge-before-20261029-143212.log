@@ -1,0 +1,44 @@
+HEAD=250d8454eb9928aeb62603245ae0953c1cd7cfcb
+STATE=four new regression tests; production code unchanged
+COMMAND=.\gradlew.bat :core:test --offline --console=plain
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:compileKotlin UP-TO-DATE
+> Task :core:compileJava NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :core:processTestResources NO-SOURCE
+> Task :core:compileTestKotlin
+> Task :core:compileTestJava NO-SOURCE
+> Task :core:testClasses UP-TO-DATE
+
+> Task :core:test
+
+IngredientNormaliserTest > joinedDoseNearMissOffersTheSameCandidatesAsTheNameAlone FAILED
+    java.lang.AssertionError at NormalisationTest.kt:109
+
+LabelParserTest > warningContinuationAfterSentenceEndDoesNotAddMedicine FAILED
+    java.lang.AssertionError at RecognitionTest.kt:121
+
+LabelParserTest > strengthFieldDoesNotBecomeAnIngredient FAILED
+    java.lang.AssertionError at RecognitionTest.kt:135
+
+TextTest > joinedDosesAreStrippedWithoutChangingNumericNames FAILED
+    org.junit.ComparisonFailure at NormalisationTest.kt:36
+
+52 tests completed, 4 failed
+
+> Task :core:test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':core:test'.
+> There were failing tests. See the report at: file:///C:/Users/hosse/Desktop/AirGapRx/core/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 31s
+4 actionable tasks: 2 executed, 2 up-to-date
+EXIT=1

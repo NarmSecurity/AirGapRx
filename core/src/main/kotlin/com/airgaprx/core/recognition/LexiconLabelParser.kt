@@ -23,9 +23,10 @@ import com.airgaprx.core.normalise.Text
  * Modes are not permanent. A later header switches mode again, and every new OCR text block
  * starts back in ACTIVE, so an active panel that OCR reads *after* an excipient list or a warning
  * is still parsed. The one exception is an unfinished warning sentence ("Do not take with"): OCR
- * can split a warning before the medicine it names, so WARNING carries into the next block until
- * the sentence ends. The design choice is to fail visibly: when in doubt, text is kept and shown
- * on the Review screen rather than dropped.
+ * can split a warning before the medicine it names. A block starting with "or" or "and" also
+ * continues the warning, even after a sentence end. Otherwise the new block starts in ACTIVE.
+ * The design choice is to fail visibly: when in doubt, text is kept and shown on the Review screen
+ * rather than dropped.
  */
 class LexiconLabelParser(
     private val lexicon: Lexicon,
@@ -73,9 +74,11 @@ class LexiconLabelParser(
                 block = line.block
                 // A new OCR block is a layout boundary: skipped modes end here, but an open
                 // ingredient panel may continue into it, and so may a warning whose sentence is
-                // unfinished ("Do not take with" / "warfarin").
-                val unfinishedWarning = mode == Mode.WARNING && !SENTENCE_END.containsMatchIn(previous)
-                if (mode != Mode.ACTIVE && !unfinishedWarning) { mode = Mode.ACTIVE; inPanel = false }
+                // unfinished ("Do not take with" / "warfarin") or explicitly continued
+                // ("Do not take with warfarin." / "Or aspirin.").
+                val continuingWarning = mode == Mode.WARNING &&
+                    (!SENTENCE_END.containsMatchIn(previous) || WARNING_CONTINUATION.containsMatchIn(text))
+                if (mode != Mode.ACTIVE && !continuingWarning) { mode = Mode.ACTIVE; inPanel = false }
             }
             previous = text
             if (inPanel && ++panelLines > MAX_PANEL_LINES) inPanel = false
@@ -122,7 +125,7 @@ class LexiconLabelParser(
     }
 
     private fun panelMentions(panel: List<Segment>): List<Mention> =
-        panel.flatMap { it.text.split(SEPARATORS) }
+        panel.flatMap { Text.withoutDoseAmounts(it.text).replace(STRENGTH_FIELD_LABEL, "$1").split(SEPARATORS) }
             .map { Text.stripDoses(it) }
             .filter { seg -> seg.length >= 3 && seg.any { it.isLetter() } && seg.split(' ').size <= 5 }
             .map { Mention(it, MentionSource.INGREDIENT_SECTION) }
@@ -131,7 +134,7 @@ class LexiconLabelParser(
         val out = ArrayList<Mention>()
         val maxN = lexicon.maxTermTokens
         for (line in lines) {
-            val toks = Text.tokens(line)
+            val toks = Text.tokens(Text.withoutDoseAmounts(line))
             var i = 0
             while (i < toks.size) {
                 val maxHere = minOf(maxN, toks.size - i)
@@ -159,6 +162,10 @@ class LexiconLabelParser(
     companion object {
         /** Safety valve for a panel header that OCR never closes; long panels (20+ lines) are rare. */
         private const val MAX_PANEL_LINES = 30
+        /** Whole conjunctions, optionally preceded by a bullet or opening quote/bracket. */
+        private val WARNING_CONTINUATION = Regex("""^\s*(?:[•·*-]\s*)?["'“‘(]?\s*(?:or|and)\b""", RegexOption.IGNORE_CASE)
+        /** Remove the field label, retaining its value and any following unknown active. */
+        private val STRENGTH_FIELD_LABEL = Regex("""(^|[,;•·|])\s*strength\s*:""", RegexOption.IGNORE_CASE)
         /** A line that ends a sentence, allowing closing brackets or quotes after the mark. */
         private val SENTENCE_END = Regex("[.!?][)\\]\"'”’]*\\s*$")
         private val SEPARATORS = Regex("[,;:•·|/()\\[\\]]|\\s+and\\s+(?=[a-z])|\\s+\\+\\s+", RegexOption.IGNORE_CASE)
