@@ -1,6 +1,8 @@
 package com.airgaprx.core
 
 import com.airgaprx.core.model.AlertType
+import com.airgaprx.core.model.Alert
+import com.airgaprx.core.model.Interaction
 import com.airgaprx.core.model.Severity
 import com.airgaprx.core.reasoning.ExplanationGenerator
 import com.airgaprx.core.reasoning.InteractionEngine
@@ -40,6 +42,22 @@ class ReasoningTest {
         assertEquals(Fixtures.paracetamol, dup.single().first)
     }
 
+    @Test fun duplicateIngredientIsDetectedWhenSeparateEntriesHaveTheSameProductName() {
+        val alerts = engine.evaluate(listOf(
+            ShelfEntry(101, Fixtures.paracetamol, "Cold medicine"),
+            ShelfEntry(102, Fixtures.paracetamol, "Cold medicine"),
+        ))
+        assertEquals(AlertType.DUPLICATE_INGREDIENT, alerts.single().type)
+    }
+
+    @Test fun repeatedEntryDoesNotBecomeADuplicateBecauseItsDisplayNameChanged() {
+        val alerts = engine.evaluate(listOf(
+            ShelfEntry(101, Fixtures.paracetamol, "Cold medicine"),
+            ShelfEntry(101, Fixtures.paracetamol, "Updated product name"),
+        ))
+        assertTrue(alerts.toString(), alerts.none { it.type == AlertType.DUPLICATE_INGREDIENT })
+    }
+
     @Test fun noInteractionsIsAnExplicitEmptyResult() {
         val alerts = engine.evaluate(listOf(ShelfEntry(1, Fixtures.simvastatin, null), ShelfEntry(2, Fixtures.magnesium, null)))
         assertTrue(alerts.isEmpty())
@@ -51,5 +69,41 @@ class ReasoningTest {
         assertTrue(e.provenance.any { it.startsWith("TEST") })
         assertTrue(e.disclaimer.contains("not medical advice"))
         assertFalse(e.mechanism.isNullOrBlank())
+    }
+
+    private fun evidence(severity: Severity, mechanism: String?, management: String?, source: String) =
+        Interaction(Fixtures.warfarin.id, Fixtures.aspirin.id, severity, mechanism, management, source, null)
+
+    private fun explain(records: List<Interaction>) = ExplanationGenerator().explain(
+        Alert(AlertType.INTERACTION, Fixtures.warfarin, Fixtures.aspirin, Severity.MAJOR, records), kb.version,
+    )
+
+    @Test fun explanationUsesTheRecordMatchingTheAlertsSeverity() {
+        val result = explain(listOf(
+            evidence(Severity.MINOR, "Minor mechanism", "Minor management", "MINOR-SOURCE"),
+            evidence(Severity.MAJOR, "Major mechanism", "Major management", "MAJOR-SOURCE"),
+        ))
+        assertEquals("Major mechanism", result.mechanism)
+        assertEquals("Major management", result.management)
+        assertTrue(result.provenance.any { it.startsWith("MINOR-SOURCE") })
+        assertTrue(result.provenance.any { it.startsWith("MAJOR-SOURCE") })
+    }
+
+    @Test fun explanationDoesNotMixFieldsFromDifferentRecords() {
+        val result = explain(listOf(
+            evidence(Severity.MAJOR, "First source mechanism", null, "FIRST"),
+            evidence(Severity.MAJOR, null, "Second source management", "SECOND"),
+        ))
+        assertEquals(null, result.mechanism)
+        assertEquals("Second source management", result.management)
+    }
+
+    @Test fun missingMajorDetailsDoNotFallBackToMinorAdvice() {
+        val result = explain(listOf(
+            evidence(Severity.MINOR, "Minor mechanism", "Minor management", "MINOR-SOURCE"),
+            evidence(Severity.MAJOR, " ", null, "MAJOR-SOURCE"),
+        ))
+        assertEquals(null, result.mechanism)
+        assertEquals(null, result.management)
     }
 }

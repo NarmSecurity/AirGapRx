@@ -17,6 +17,11 @@ data class Explanation(
 class ExplanationGenerator {
     fun explain(alert: Alert, kb: KbVersion): Explanation {
         val severityWord = alert.severity.name.lowercase().replaceFirstChar { it.uppercase() }
+        // Explain the severity actually shown. Keep mechanism and management from one record,
+        // preferring complete details, then management; never substitute lower-severity advice.
+        val detail = alert.evidence.filter { it.severity == alert.severity }.maxByOrNull {
+            (if (!it.management.isNullOrBlank()) 2 else 0) + (if (!it.mechanism.isNullOrBlank()) 1 else 0)
+        }
         return when (alert.type) {
             AlertType.DUPLICATE_INGREDIENT -> Explanation(
                 headline = "${alert.first.name} appears in more than one product",
@@ -29,8 +34,8 @@ class ExplanationGenerator {
             AlertType.INTERACTION -> Explanation(
                 headline = "${alert.first.name} + ${alert.second.name}",
                 summary = "$severityWord interaction recorded in the offline knowledge base.",
-                mechanism = alert.evidence.firstNotNullOfOrNull { it.mechanism?.takeIf(String::isNotBlank) },
-                management = alert.evidence.firstNotNullOfOrNull { it.management?.takeIf(String::isNotBlank) },
+                mechanism = detail?.mechanism?.takeIf(String::isNotBlank),
+                management = detail?.management?.takeIf(String::isNotBlank),
                 provenance = alert.evidence.map { e ->
                     buildString {
                         append(e.source)

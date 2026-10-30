@@ -1,5 +1,6 @@
 package com.airgaprx.app.ui.review
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -59,12 +60,13 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
     var searching by remember { mutableStateOf(false) }
     var replacing by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(ui.saved) { if (ui.saved) onSaved() }
+    BackHandler(enabled = ui.saving) { /* Finish the product transaction before leaving. */ }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Check what was read") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } },
+                navigationIcon = { IconButton(onClick = onBack, enabled = !ui.saving) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } },
             )
         },
         bottomBar = {
@@ -77,7 +79,10 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                             else "${ui.pendingCount} items need your decision before saving.",
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error,
                         )
-                        Button(onClick = vm::save, enabled = ui.canSave, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Add to my medicines") }
+                        ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        Button(onClick = vm::save, enabled = ui.canSave, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                            Text(if (ui.saving) "Saving…" else "Add to my medicines")
+                        }
                     }
                 }
             }
@@ -92,12 +97,13 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                 OutlinedTextField(
                     ui.product, vm::setProduct, singleLine = true, modifier = Modifier.fillMaxWidth(),
                     label = { Text("Product name (optional)") },
+                    enabled = !ui.saving,
                     supportingText = { Text("Helps spot the same ingredient in two products.") },
                 )
             }
-            items(ui.rows.filter { it.state != RowState.Removed }, key = { it.id }) { row -> RowCard(row, vm, onChange = { replacing = row.id }) }
+            items(ui.rows.filter { it.state != RowState.Removed }, key = { it.id }) { row -> RowCard(row, vm, enabled = !ui.saving, onChange = { replacing = row.id }) }
             item {
-                TextButton(onClick = { searching = true }) {
+                TextButton(onClick = { searching = true }, enabled = !ui.saving) {
                     Icon(Icons.Outlined.Search, null); Text("Add a missing ingredient")
                 }
             }
@@ -109,7 +115,7 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
 }
 
 @Composable
-private fun RowCard(row: ReviewRow, vm: ReviewViewModel, onChange: () -> Unit) {
+private fun RowCard(row: ReviewRow, vm: ReviewViewModel, enabled: Boolean, onChange: () -> Unit) {
     PrintedLabel(
         Modifier.fillMaxWidth(),
         color = if (row.pending) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerLowest,
@@ -131,21 +137,21 @@ private fun RowCard(row: ReviewRow, vm: ReviewViewModel, onChange: () -> Unit) {
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
                         )
                     }
-                    TextButton(onClick = onChange) { Text("Change") }
-                    IconButton(onClick = { vm.remove(row.id) }) { Icon(Icons.Outlined.Close, "Remove ${s.ingredient.name}") }
+                    TextButton(onClick = onChange, enabled = enabled) { Text("Change") }
+                    IconButton(onClick = { vm.remove(row.id) }, enabled = enabled) { Icon(Icons.Outlined.Close, "Remove ${s.ingredient.name}") }
                 }
                 is RowState.Choose -> {
                     Text("Which of these is it?", style = MaterialTheme.typography.titleSmall)
                     s.options.forEach { c ->
                         Row(
-                            Modifier.fillMaxWidth().selectable(selected = false, role = Role.RadioButton) { vm.choose(row.id, c) },
+                            Modifier.fillMaxWidth().selectable(selected = false, enabled = enabled, role = Role.RadioButton) { vm.choose(row.id, c) },
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(selected = false, onClick = null)
                             CandidateText(c, Modifier.padding(start = 8.dp, top = 6.dp, bottom = 6.dp))
                         }
                     }
-                    TextButton(onClick = { vm.noneOfThese(row.id) }) { Text("None of these") }
+                    TextButton(onClick = { vm.noneOfThese(row.id) }, enabled = enabled) { Text("None of these") }
                 }
                 is RowState.Unknown -> {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -157,8 +163,8 @@ private fun RowCard(row: ReviewRow, vm: ReviewViewModel, onChange: () -> Unit) {
                         )
                     }
                     if (s.keep == null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { vm.keepUnchecked(row.id) }) { Text("Keep") }
-                        OutlinedButton(onClick = { vm.remove(row.id) }) { Text("Not an ingredient") }
+                        OutlinedButton(onClick = { vm.keepUnchecked(row.id) }, enabled = enabled) { Text("Keep") }
+                        OutlinedButton(onClick = { vm.remove(row.id) }, enabled = enabled) { Text("Not an ingredient") }
                     }
                 }
                 RowState.Removed -> Unit

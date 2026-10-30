@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.airgaprx.core.KbPackageTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-29T02:53:28" hostname="MOFRADPC" time="0.992">
+  <properties/>
+  <testcase name="truncatedZipIsRejectedAndPriorRetained" classname="com.airgaprx.core.KbPackageTest" time="0.542"/>
+  <testcase name="onDiskTamperingIsDetected" classname="com.airgaprx.core.KbPackageTest" time="0.03"/>
+  <testcase name="developmentDataStillLoadsInDebugPolicy" classname="com.airgaprx.core.KbPackageTest" time="0.02"/>
+  <testcase name="inputReadFailureIsRejectedAndPriorRetained" classname="com.airgaprx.core.KbPackageTest" time="0.036"/>
+  <testcase name="releasePolicyRejectsSignedDevelopmentData" classname="com.airgaprx.core.KbPackageTest" time="0.133"/>
+  <testcase name="unexpectedFileIsRejected" classname="com.airgaprx.core.KbPackageTest" time="0.017"/>
+  <testcase name="downgradeIsRejected" classname="com.airgaprx.core.KbPackageTest" time="0.056"/>
+  <testcase name="malformedSignedManifestIsRejectedAndPriorRetained" classname="com.airgaprx.core.KbPackageTest" time="0.052"/>
+  <testcase name="untrustedSignerIsRejected" classname="com.airgaprx.core.KbPackageTest" time="0.016"/>
+  <testcase name="validPackageInstalls" classname="com.airgaprx.core.KbPackageTest" time="0.022"/>
+  <testcase name="corruptedChecksumIsRejectedAndPriorRetained" classname="com.airgaprx.core.KbPackageTest" time="0.039"/>
+  <testcase name="cancellationIsNotTurnedIntoARejectedPackage" classname="com.airgaprx.core.KbPackageTest" time="0.021"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

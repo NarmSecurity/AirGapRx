@@ -1,0 +1,12 @@
+BASE_HEAD=250d845
+STATE=uncommitted seven review fixes plus prior label-edge fixes
+DEVICE=AirGapRx_API35 Android15 API35 emulator
+INSTALLED_APK:
+6a48d969e9cc3b6beb7f6faaf394bde7fc60ab1dda262fef48c0fc65967a3251  /data/app/~~dnQhvhOJqvg_8LSR0EPDAg==/com.airgaprx.app-Wn0wLYpBqXlZjxvq4Coe8Q==/base.apk
+INPUT_HASHES:
+dc76fda73b1e6580debc6b3dfbf0a2e716f5ff189ad9c51f6e890eba3f410375  /sdcard/Pictures/rx-contains-20261029-155911.png
+5e94060235703b05fa22d59df28d4d288086c70aedbfe243fc001521b47168b7  /sdcard/Pictures/rx-actives-20261029-155911.png
+c86b181bdb123c8b793145d7bfa211e2f81ace0842eda793286d28dd134bbeba  /sdcard/Download/rx-corrupt-20261029-155911.zip
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /sdcard/Download/rx-empty-20261029-155911.task
+CRASH_BUFFER:
+

@@ -3,6 +3,7 @@ package com.airgaprx.core.kb
 import com.airgaprx.core.model.KbVersion
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import java.security.KeyFactory
 import java.security.MessageDigest
@@ -162,6 +163,13 @@ class KbInstaller(
             }
             previousDir.deleteRecursively()
             return InstallResult.Installed(newVersion)
+        } catch (e: IOException) {
+            // Truncated ZIP entries, unreadable streams and verification reads are rejected
+            // before activation, just like invalid signatures or checksums.
+            return InstallResult.Rejected("Could not read the knowledge-base package; it may be truncated or corrupt")
+        } catch (e: IllegalArgumentException) {
+            // Properties.load rejects malformed escape sequences even in a signed manifest.
+            return InstallResult.Rejected("Package manifest is malformed")
         } finally {
             stagingDir.deleteRecursively()
         }

@@ -168,6 +168,15 @@ never downloads anything itself.
   48 ([results](docs/evidence/search-and-loading-after-core-results-20261028-172833/)). The first `:app`
   unit tests (4, shelf row status) pass with `./gradlew :app:testDebugUnitTest`
   ([results](docs/evidence/search-and-loading-after-app-results-20261028-172833/)).
+  After the joined-dose, strength-field and warning-continuation fixes on 29 Oct, all 56 core tests
+  and the same 4 app unit tests pass
+  ([log](docs/evidence/label-edge-after-20261029-143538.log),
+  [core results](docs/evidence/label-edge-after-core-results-20261029-143538/),
+  [app results](docs/evidence/label-edge-after-app-results-20261029-143538/)).
+  After the subsequent seven review fixes, 69 core tests, 16 app unit tests and 2 isolated
+  SQLCipher tests on the Android 15 emulator pass
+  ([combined log](docs/evidence/review-fixes-after-20261029-155826.log)). Connected tests now
+  retain the development installation and shelf after cleanup via the project Gradle setting.
 - **Android build: compiles.** The debug APK built on 24 Oct 2026 with JDK 21 and the Android SDK
   command-line tools ([log](docs/evidence/build-20261024-191001.log)). The merged-manifest check and the
   `aapt2` check both found no network permission; the APK declares only `CAMERA` and the app's own

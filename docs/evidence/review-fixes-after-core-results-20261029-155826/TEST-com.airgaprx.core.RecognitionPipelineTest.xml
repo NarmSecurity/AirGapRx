@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.airgaprx.core.RecognitionPipelineTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-29T02:58:54" hostname="MOFRADPC" time="0.03">
+  <properties/>
+  <testcase name="goodCaptureProducesReviewItemsAndTimings" classname="com.airgaprx.core.RecognitionPipelineTest" time="0.012"/>
+  <testcase name="joinedDoseOnFrontOfPackStillReachesReview" classname="com.airgaprx.core.RecognitionPipelineTest" time="0.006"/>
+  <testcase name="lowConfidenceCaptureAsksForRetake" classname="com.airgaprx.core.RecognitionPipelineTest" time="0.006"/>
+  <testcase name="blankCaptureAsksForRetake" classname="com.airgaprx.core.RecognitionPipelineTest" time="0.001"/>
+  <testcase name="joinedDoseAndStrengthFieldReachReviewAsOneAmbiguousIngredient" classname="com.airgaprx.core.RecognitionPipelineTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

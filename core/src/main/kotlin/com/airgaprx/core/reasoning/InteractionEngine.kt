@@ -27,9 +27,11 @@ class InteractionEngine(private val kb: KnowledgeBase) {
             }
         }
         // Therapeutic duplication: the same ingredient from two different products (e.g. two
-        // paracetamol-containing cold remedies) is a common, avoidable overdose route.
+        // paracetamol-containing cold remedies) is a common, avoidable overdose route. Product
+        // names are optional display labels, not identities; separate shelf rows remain separate
+        // entries even when the user gave them the same name.
         entries.groupBy { it.ingredient.id }
-            .filter { (_, group) -> group.mapTo(HashSet()) { it.productName ?: "entry-${it.entryId}" }.size > 1 }
+            .filter { (_, group) -> group.mapTo(HashSet()) { it.entryId }.size > 1 }
             .forEach { (_, group) ->
                 val ing = group.first().ingredient
                 alerts += Alert(AlertType.DUPLICATE_INGREDIENT, ing, ing, Severity.MODERATE, emptyList())

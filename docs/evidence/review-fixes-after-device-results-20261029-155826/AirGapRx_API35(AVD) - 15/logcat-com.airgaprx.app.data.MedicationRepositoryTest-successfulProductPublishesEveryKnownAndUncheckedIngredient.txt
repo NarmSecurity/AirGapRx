@@ -1,0 +1,5 @@
+10-29 15:59:38.618 10152 10166 I TestRunner: started: successfulProductPublishesEveryKnownAndUncheckedIngredient(com.airgaprx.app.data.MedicationRepositoryTest)
+10-29 15:59:38.755 10152 10166 D nativeloader: Load /data/app/~~rzDlXkeuaytnJ3_Kq5F3uQ==/com.airgaprx.app-lGm-PV1R-a-9pQJcWHfOzA==/base.apk!/lib/x86_64/libsqlcipher.so using ns clns-7 from class loader (caller=/data/app/~~rzDlXkeuaytnJ3_Kq5F3uQ==/com.airgaprx.app-lGm-PV1R-a-9pQJcWHfOzA==/base.apk!classes8.dex): ok
+10-29 15:59:38.921 10152 10166 I SQLiteConnection: Database keying operation returned:0
+10-29 15:59:39.343 10152 10166 D CompatChangeReporter: Compat change id reported: 312399441; UID 10211; state: ENABLED
+10-29 15:59:39.508 10152 10166 I TestRunner: finished: successfulProductPublishesEveryKnownAndUncheckedIngredient(com.airgaprx.app.data.MedicationRepositoryTest)

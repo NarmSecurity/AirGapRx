@@ -1,0 +1,3 @@
+10-29 15:59:39.519 10152 10166 I TestRunner: started: failedSecondIngredientRollsBackTheWholeProduct(com.airgaprx.app.data.MedicationRepositoryTest)
+10-29 15:59:39.540 10152 10166 I SQLiteConnection: Database keying operation returned:0
+10-29 15:59:39.968 10152 10166 I TestRunner: finished: failedSecondIngredientRollsBackTheWholeProduct(com.airgaprx.app.data.MedicationRepositoryTest)

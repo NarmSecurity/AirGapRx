@@ -98,6 +98,46 @@ class LabelParserTest {
         assertFalse("warfarin is only mentioned in a split warning: $texts", texts.any { it.contains("warfarin") })
     }
 
+    @Test fun containsAtStartOfWarningContinuationDoesNotOpenActivePanel() {
+        val label = OcrResult(listOf(
+            TextLine("Each tablet contains Paracetamol 500 mg", 0.95f, block = 0),
+            TextLine("Warnings: Do not take with a product that", 0.95f, block = 1),
+            TextLine("contains warfarin.", 0.95f, block = 2),
+        ))
+        val texts = parser.parse(label).map { it.text }
+        assertTrue(texts.toString(), texts.contains("paracetamol"))
+        assertFalse("a continued warning must not add warfarin: $texts", texts.any { it.contains("warfarin") })
+    }
+
+    @Test fun containsAfterFinishedWarningInTheSameBlockCanOpenPanel() {
+        val texts = parser.parse(ocr(
+            "Warnings: Do not take with warfarin.",
+            "Contains St John's wort 300 mg",
+        )).map { it.text }
+        assertTrue("a finished warning must not hide the following active: $texts", texts.any { it.contains("wort") })
+        assertFalse(texts.toString(), texts.any { it.contains("warfarin") })
+    }
+
+    @Test fun explicitlyDeclaredActivesAreNotRemovedByExcipientPhraseFilter() {
+        val texts = parser.parse(ocr(
+            "Active ingredients: Calcium hydrogen phosphate 500 mg, Paracetamol 500 mg",
+        )).map { it.text }
+        assertTrue("declared actives must reach review: $texts", texts.containsAll(listOf("calcium hydrogen phosphate", "paracetamol")))
+    }
+
+    @Test fun genericHeaderDoesNotEraseAnExplicitActivePanelDeclaration() {
+        for (block in listOf(0, 1)) {
+            val label = OcrResult(listOf(
+                TextLine("Active ingredients:", 0.95f, block = 0),
+                TextLine("Contains calcium hydrogen phosphate 500 mg", 0.95f, block = block),
+                TextLine("Other ingredients: magnesium stearate", 0.95f, block = block + 1),
+            ))
+            val texts = parser.parse(label).map { it.text }
+            assertTrue(texts.toString(), texts.contains("calcium hydrogen phosphate"))
+            assertFalse(texts.toString(), texts.any { it.contains("magnesium") })
+        }
+    }
+
     @Test fun warningContinuesAcrossSeveralOcrBlocks() {
         val label = OcrResult(listOf(
             TextLine("Each tablet contains Paracetamol 500 mg", 0.95f, block = 0),

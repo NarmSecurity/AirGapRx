@@ -36,11 +36,13 @@ class LexiconLabelParser(
     enum class Mode { ACTIVE, EXCIPIENT, WARNING, OTHER }
 
     /** A piece of label text with its section mode. [inPanel] is true inside an active-ingredient panel. */
-    data class Segment(val text: String, val mode: Mode, val inPanel: Boolean)
+    data class Segment(val text: String, val mode: Mode, val inPanel: Boolean, val declaredActive: Boolean = false)
 
     override fun parse(ocr: OcrResult): List<Mention> {
         val segs = segments(ocr)
-        val active = segs.filter { it.mode == Mode.ACTIVE }.map { it.copy(text = removeExcipients(it.text)) }
+        val active = segs.filter { it.mode == Mode.ACTIVE }.map {
+            if (it.declaredActive) it else it.copy(text = removeExcipients(it.text))
+        }
         val mentions = ArrayList<Mention>()
         mentions += panelMentions(active.filter { it.inPanel })
         mentions += spotMentions(active.map { it.text })
@@ -57,6 +59,8 @@ class LexiconLabelParser(
         val atLineStart: Boolean = false,
         /** Common words ("contains", "ingredients") that only count as headers at the start of a line. */
         val generic: Boolean = false,
+        /** "contains" may be the verb continuing a warning, not a section title. */
+        val warningVerb: Boolean = false,
     )
 
     /** Splits OCR lines into moded segments. Public for tests and for the evaluation report. */
@@ -65,6 +69,7 @@ class LexiconLabelParser(
         var block = Int.MIN_VALUE
         var mode = Mode.ACTIVE
         var inPanel = false
+        var declaredActive = false
         var panelLines = 0
         var previous = ""
         for (line in ocr.lines) {
@@ -78,24 +83,26 @@ class LexiconLabelParser(
                 // ("Do not take with warfarin." / "Or aspirin.").
                 val continuingWarning = mode == Mode.WARNING &&
                     (!SENTENCE_END.containsMatchIn(previous) || WARNING_CONTINUATION.containsMatchIn(text))
-                if (mode != Mode.ACTIVE && !continuingWarning) { mode = Mode.ACTIVE; inPanel = false }
+                if (mode != Mode.ACTIVE && !continuingWarning) { mode = Mode.ACTIVE; inPanel = false; declaredActive = false }
             }
-            previous = text
-            if (inPanel && ++panelLines > MAX_PANEL_LINES) inPanel = false
+            if (inPanel && ++panelLines > MAX_PANEL_LINES) { inPanel = false; declaredActive = false }
 
             var cursor = 0
             for (hit in headerHits(text)) {
                 // A panel header inside running text is not a section title: "Do not take with a
                 // product that contains warfarin" must stay in WARNING mode. Generic words only
                 // open a panel at the start of a line; no panel header re-opens ACTIVE mid-warning.
+                if (hit.opensPanel && mode == Mode.WARNING && hit.warningVerb && !SENTENCE_END.containsMatchIn(previous)) continue
                 if (hit.opensPanel && !hit.atLineStart && (hit.generic || mode == Mode.WARNING)) continue
-                if (hit.start > cursor) out += Segment(text.substring(cursor, hit.start), mode, inPanel && mode == Mode.ACTIVE)
+                if (hit.start > cursor) out += Segment(text.substring(cursor, hit.start), mode, inPanel && mode == Mode.ACTIVE, declaredActive)
                 mode = hit.mode
                 inPanel = hit.opensPanel
+                declaredActive = hit.opensPanel && (!hit.generic || declaredActive)
                 if (hit.opensPanel) panelLines = 0
                 cursor = hit.end
             }
-            if (cursor < text.length) out += Segment(text.substring(cursor), mode, inPanel && mode == Mode.ACTIVE)
+            if (cursor < text.length) out += Segment(text.substring(cursor), mode, inPanel && mode == Mode.ACTIVE, declaredActive)
+            previous = text
         }
         return out.filter { it.text.isNotBlank() }
     }
@@ -105,7 +112,7 @@ class LexiconLabelParser(
         val all = ArrayList<Hit>()
         fun atStart(i: Int) = line.substring(0, i).none { it.isLetterOrDigit() }
         PANEL_HEADERS.zip(PANEL_HEADER_PATTERNS).forEach { (h, p) ->
-            p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.ACTIVE, true, atStart(it.range.first), h in GENERIC_PANEL_HEADERS) }
+            p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.ACTIVE, true, atStart(it.range.first), h in GENERIC_PANEL_HEADERS, h == "contains") }
         }
         EXCIPIENT_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.EXCIPIENT, false) } }
         WARNING_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.WARNING, false) } }

@@ -1,0 +1,5 @@
+METHOD=Standalone JVM source launcher; provisional reproduction, not Gradle/JUnit
+BASE_HEAD=250d8454eb9928aeb62603245ae0953c1cd7cfcb
+CORE_JAR_SHA256=D838614E5C3C5C152F62759C9050D7F5E8AB09958BB98B9C6CBF2ABBCAF7B988
+Error: Could not find or load main class C:\Users\hosse\Desktop\AirGapRx\docs\evidence\review-20261029\kb-probe-20261029-153552.java
+Caused by: java.lang.ClassNotFoundException: C:\Users\hosse\Desktop\AirGapRx\docs\evidence\review-20261029\kb-probe-20261029-153552.java

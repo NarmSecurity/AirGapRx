@@ -1,0 +1,1020 @@
+diff --git a/app/src/main/kotlin/com/airgaprx/app/data/KnowledgeBaseRepository.kt b/app/src/main/kotlin/com/airgaprx/app/data/KnowledgeBaseRepository.kt
+index 27abfb6..fbd7366 100644
+--- a/app/src/main/kotlin/com/airgaprx/app/data/KnowledgeBaseRepository.kt
++++ b/app/src/main/kotlin/com/airgaprx/app/data/KnowledgeBaseRepository.kt
+@@ -18,6 +18,7 @@ import kotlinx.coroutines.sync.Mutex
+ import kotlinx.coroutines.sync.withLock
+ import kotlinx.coroutines.withContext
+ import java.io.File
++import java.io.IOException
+ 
+ sealed interface KbState {
+     data object Loading : KbState
+@@ -72,8 +73,13 @@ class KnowledgeBaseRepository(private val context: Context) {
+     /** Installs an offline update package. The previous knowledge base stays live if anything fails. */
+     suspend fun installFromUri(uri: Uri): InstallResult = withContext(Dispatchers.IO) {
+         val result = mutex.withLock {
+-            val input = context.contentResolver.openInputStream(uri)
+-                ?: return@withLock InstallResult.Rejected("Could not open the selected file")
++            val input = try {
++                context.contentResolver.openInputStream(uri)
++            } catch (e: IOException) {
++                return@withLock InstallResult.Rejected("Could not read the selected file")
++            } catch (e: SecurityException) {
++                return@withLock InstallResult.Rejected("Access to the selected file was denied")
++            } ?: return@withLock InstallResult.Rejected("Could not open the selected file")
+             input.use { installer.install(it) }
+         }
+         if (result is InstallResult.Installed) load()
+diff --git a/app/src/main/kotlin/com/airgaprx/app/data/MedicationRepository.kt b/app/src/main/kotlin/com/airgaprx/app/data/MedicationRepository.kt
+index f031c20..f05c3dc 100644
+--- a/app/src/main/kotlin/com/airgaprx/app/data/MedicationRepository.kt
++++ b/app/src/main/kotlin/com/airgaprx/app/data/MedicationRepository.kt
+@@ -9,9 +9,12 @@ import com.airgaprx.app.platform.KeystorePassphrase
+ import com.airgaprx.core.kb.KnowledgeBase
+ import com.airgaprx.core.reasoning.ShelfEntry
+ import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.NonCancellable
+ import kotlinx.coroutines.flow.MutableStateFlow
+ import kotlinx.coroutines.flow.StateFlow
+ import kotlinx.coroutines.withContext
++import kotlinx.coroutines.sync.Mutex
++import kotlinx.coroutines.sync.withLock
+ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
+ 
+ /**
+@@ -60,9 +63,14 @@ class MedicationRepository(context: Context) {
+ 
+     private val _items = MutableStateFlow<List<ShelfItem>>(emptyList())
+     val items: StateFlow<List<ShelfItem>> = _items
++    private val mutex = Mutex()
+ 
+     suspend fun refresh() = withContext(Dispatchers.IO) {
+-        _items.value = db.query("SELECT id, ingredient_id, display_name, product_name, added_at FROM shelf ORDER BY added_at DESC")
++        mutex.withLock { _items.value = readItems(db) }
++    }
++
++    private fun readItems(database: SupportSQLiteDatabase): List<ShelfItem> =
++        database.query("SELECT id, ingredient_id, display_name, product_name, added_at FROM shelf ORDER BY added_at DESC, id DESC")
+             .use { c ->
+                 buildList {
+                     while (c.moveToNext()) add(
+@@ -71,26 +79,52 @@ class MedicationRepository(context: Context) {
+                     )
+                 }
+             }
++
++    /** Commit and publish one complete snapshot even if the initiating screen is destroyed. */
++    private suspend fun mutateShelf(write: (SupportSQLiteDatabase) -> Unit) = withContext(Dispatchers.IO + NonCancellable) {
++        mutex.withLock {
++            val database = db
++            database.beginTransaction()
++            val snapshot = try {
++                write(database)
++                // A query failure must roll back too, rather than report failure after committing
++                // and allow the caller to insert the same product again on retry.
++                val items = readItems(database)
++                database.setTransactionSuccessful()
++                items
++            } finally {
++                database.endTransaction()
++            }
++            _items.value = snapshot
++        }
+     }
+ 
+-    suspend fun add(ingredientId: String?, displayName: String, productName: String?) = withContext(Dispatchers.IO) {
+-        db.insert("shelf", SQLiteDatabase.CONFLICT_NONE, ContentValues().apply {
+-            put("ingredient_id", ingredientId)
+-            put("display_name", displayName)
+-            put("product_name", productName?.takeIf { it.isNotBlank() })
+-            put("added_at", System.currentTimeMillis())
+-        })
+-        refresh()
++    suspend fun add(ingredientId: String?, displayName: String, productName: String?) =
++        addProduct(listOf(ShelfDraft(ingredientId, displayName)), productName)
++
++    /** All ingredients for one reviewed product are saved together, or none are. */
++    suspend fun addProduct(entries: List<ShelfDraft>, productName: String?) {
++        val batch = entries.toList()
++        mutateShelf { database ->
++            val now = System.currentTimeMillis()
++            batch.forEach { entry ->
++                val id = database.insert("shelf", SQLiteDatabase.CONFLICT_NONE, ContentValues().apply {
++                    put("ingredient_id", entry.ingredientId)
++                    put("display_name", entry.displayName)
++                    put("product_name", productName?.takeIf { it.isNotBlank() })
++                    put("added_at", now)
++                })
++                check(id != -1L) { "Could not insert a reviewed ingredient" }
++            }
++        }
+     }
+ 
+-    suspend fun remove(id: Long) = withContext(Dispatchers.IO) {
+-        db.delete("shelf", "id = ?", arrayOf(id))
+-        refresh()
++    suspend fun remove(id: Long) = mutateShelf { database ->
++        database.delete("shelf", "id = ?", arrayOf(id))
+     }
+ 
+-    suspend fun clear() = withContext(Dispatchers.IO) {
+-        db.delete("shelf", null, null)
+-        refresh()
++    suspend fun clear() = mutateShelf { database ->
++        database.delete("shelf", null, null)
+     }
+ 
+     /** Shelf items that map to knowledge-base ingredients, as core [ShelfEntry]s for the engine. */
+diff --git a/app/src/main/kotlin/com/airgaprx/app/ui/kb/AboutViewModel.kt b/app/src/main/kotlin/com/airgaprx/app/ui/kb/AboutViewModel.kt
+index 8cc8c14..a59338a 100644
+--- a/app/src/main/kotlin/com/airgaprx/app/ui/kb/AboutViewModel.kt
++++ b/app/src/main/kotlin/com/airgaprx/app/ui/kb/AboutViewModel.kt
+@@ -8,8 +8,11 @@ import androidx.lifecycle.viewModelScope
+ import com.airgaprx.app.AppContainer
+ import com.airgaprx.app.data.KbState
+ import com.airgaprx.app.platform.MediaPipeLlmParser
++import com.airgaprx.app.platform.ModelImporter
++import com.airgaprx.app.platform.ModelImportResult
+ import com.airgaprx.core.kb.InstallResult
+ import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.CancellationException
+ import kotlinx.coroutines.flow.MutableStateFlow
+ import kotlinx.coroutines.flow.StateFlow
+ import kotlinx.coroutines.launch
+@@ -37,18 +40,26 @@ class AboutViewModel(private val c: AppContainer) : ViewModel() {
+ 
+     /** Copies a MediaPipe .task model into app-private storage. */
+     fun importModel(context: Context, uri: Uri) = viewModelScope.launch {
+-        _message.value = withContext(Dispatchers.IO) {
+-            val name = displayName(context, uri) ?: "model.task"
+-            if (!name.endsWith(".task")) return@withContext "Choose a MediaPipe .task model file"
+-            val dir = MediaPipeLlmParser.modelDir(context)
+-            dir.listFiles()?.forEach { it.delete() }
+-            val dest = File(dir, name)
+-            context.contentResolver.openInputStream(uri)?.use { input -> dest.outputStream().use { input.copyTo(it) } }
+-                ?: return@withContext "Could not read the selected file"
+-            "Imported $name (${dest.length() / (1024 * 1024)} MB)"
++        val result = try {
++            withContext(Dispatchers.IO) {
++                val name = displayName(context, uri) ?: "model.task"
++                ModelImporter(MediaPipeLlmParser.modelDir(context)).import(name) {
++                    context.contentResolver.openInputStream(uri)
++                }
++            }
++        } catch (e: CancellationException) {
++            throw e
++        } catch (e: Exception) {
++            ModelImportResult.Rejected("Could not read the selected file. The previous model is unchanged.")
++        }
++        _message.value = when (result) {
++            is ModelImportResult.Imported -> "Imported ${result.file.name} (${result.file.length() / (1024 * 1024)} MB)"
++            is ModelImportResult.Rejected -> result.reason
++        }
++        if (result is ModelImportResult.Imported) {
++            c.onModelChanged()
++            _model.value = c.modelFile()
+         }
+-        c.onModelChanged()
+-        _model.value = c.modelFile()
+     }
+ 
+     fun removeModel(context: Context) {
+diff --git a/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewScreen.kt b/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewScreen.kt
+index e8266d3..7494b37 100644
+--- a/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewScreen.kt
++++ b/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewScreen.kt
+@@ -1,5 +1,6 @@
+ package com.airgaprx.app.ui.review
+ 
++import androidx.activity.compose.BackHandler
+ import androidx.compose.foundation.layout.Arrangement
+ import androidx.compose.foundation.layout.Column
+ import androidx.compose.foundation.layout.PaddingValues
+@@ -59,12 +60,13 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
+     var searching by remember { mutableStateOf(false) }
+     var replacing by remember { mutableStateOf<Int?>(null) }
+     LaunchedEffect(ui.saved) { if (ui.saved) onSaved() }
++    BackHandler(enabled = ui.saving) { /* Finish the product transaction before leaving. */ }
+ 
+     Scaffold(
+         topBar = {
+             TopAppBar(
+                 title = { Text("Check what was read") },
+-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } },
++                navigationIcon = { IconButton(onClick = onBack, enabled = !ui.saving) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } },
+             )
+         },
+         bottomBar = {
+@@ -77,7 +79,10 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
+                             else "${ui.pendingCount} items need your decision before saving.",
+                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error,
+                         )
+-                        Button(onClick = vm::save, enabled = ui.canSave, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Add to my medicines") }
++                        ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
++                        Button(onClick = vm::save, enabled = ui.canSave, modifier = Modifier.fillMaxWidth().height(56.dp)) {
++                            Text(if (ui.saving) "Saving…" else "Add to my medicines")
++                        }
+                     }
+                 }
+             }
+@@ -92,12 +97,13 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
+                 OutlinedTextField(
+                     ui.product, vm::setProduct, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                     label = { Text("Product name (optional)") },
++                    enabled = !ui.saving,
+                     supportingText = { Text("Helps spot the same ingredient in two products.") },
+                 )
+             }
+-            items(ui.rows.filter { it.state != RowState.Removed }, key = { it.id }) { row -> RowCard(row, vm, onChange = { replacing = row.id }) }
++            items(ui.rows.filter { it.state != RowState.Removed }, key = { it.id }) { row -> RowCard(row, vm, enabled = !ui.saving, onChange = { replacing = row.id }) }
+             item {
+-                TextButton(onClick = { searching = true }) {
++                TextButton(onClick = { searching = true }, enabled = !ui.saving) {
+                     Icon(Icons.Outlined.Search, null); Text("Add a missing ingredient")
+                 }
+             }
+@@ -109,7 +115,7 @@ fun ReviewScreen(onBack: () -> Unit, onSaved: () -> Unit) {
+ }
+ 
+ @Composable
+-private fun RowCard(row: ReviewRow, vm: ReviewViewModel, onChange: () -> Unit) {
++private fun RowCard(row: ReviewRow, vm: ReviewViewModel, enabled: Boolean, onChange: () -> Unit) {
+     PrintedLabel(
+         Modifier.fillMaxWidth(),
+         color = if (row.pending) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerLowest,
+@@ -131,21 +137,21 @@ private fun RowCard(row: ReviewRow, vm: ReviewViewModel, onChange: () -> Unit) {
+                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
+                         )
+                     }
+-                    TextButton(onClick = onChange) { Text("Change") }
+-                    IconButton(onClick = { vm.remove(row.id) }) { Icon(Icons.Outlined.Close, "Remove ${s.ingredient.name}") }
++                    TextButton(onClick = onChange, enabled = enabled) { Text("Change") }
++                    IconButton(onClick = { vm.remove(row.id) }, enabled = enabled) { Icon(Icons.Outlined.Close, "Remove ${s.ingredient.name}") }
+                 }
+                 is RowState.Choose -> {
+                     Text("Which of these is it?", style = MaterialTheme.typography.titleSmall)
+                     s.options.forEach { c ->
+                         Row(
+-                            Modifier.fillMaxWidth().selectable(selected = false, role = Role.RadioButton) { vm.choose(row.id, c) },
++                            Modifier.fillMaxWidth().selectable(selected = false, enabled = enabled, role = Role.RadioButton) { vm.choose(row.id, c) },
+                             verticalAlignment = Alignment.CenterVertically,
+                         ) {
+                             RadioButton(selected = false, onClick = null)
+                             CandidateText(c, Modifier.padding(start = 8.dp, top = 6.dp, bottom = 6.dp))
+                         }
+                     }
+-                    TextButton(onClick = { vm.noneOfThese(row.id) }) { Text("None of these") }
++                    TextButton(onClick = { vm.noneOfThese(row.id) }, enabled = enabled) { Text("None of these") }
+                 }
+                 is RowState.Unknown -> {
+                     Row(verticalAlignment = Alignment.CenterVertically) {
+@@ -157,8 +163,8 @@ private fun RowCard(row: ReviewRow, vm: ReviewViewModel, onChange: () -> Unit) {
+                         )
+                     }
+                     if (s.keep == null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+-                        OutlinedButton(onClick = { vm.keepUnchecked(row.id) }) { Text("Keep") }
+-                        OutlinedButton(onClick = { vm.remove(row.id) }) { Text("Not an ingredient") }
++                        OutlinedButton(onClick = { vm.keepUnchecked(row.id) }, enabled = enabled) { Text("Keep") }
++                        OutlinedButton(onClick = { vm.remove(row.id) }, enabled = enabled) { Text("Not an ingredient") }
+                     }
+                 }
+                 RowState.Removed -> Unit
+diff --git a/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewViewModel.kt b/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewViewModel.kt
+index 4759fcc..7f072a8 100644
+--- a/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewViewModel.kt
++++ b/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewViewModel.kt
+@@ -3,11 +3,15 @@ package com.airgaprx.app.ui.review
+ import androidx.lifecycle.ViewModel
+ import androidx.lifecycle.viewModelScope
+ import com.airgaprx.app.AppContainer
++import com.airgaprx.app.data.ShelfDraft
+ import com.airgaprx.core.model.Candidate
+ import com.airgaprx.core.model.Ingredient
+ import com.airgaprx.core.model.Mention
+ import com.airgaprx.core.model.MentionSource
+ import com.airgaprx.core.model.Resolution
++import com.airgaprx.core.model.RecognisedItem
++import kotlinx.coroutines.CancellationException
++import kotlinx.coroutines.CoroutineScope
+ import kotlinx.coroutines.flow.MutableStateFlow
+ import kotlinx.coroutines.flow.StateFlow
+ import kotlinx.coroutines.flow.update
+@@ -26,15 +30,43 @@ data class ReviewRow(val id: Int, val mention: Mention, val state: RowState) {
+     val pending: Boolean get() = state is RowState.Choose || (state is RowState.Unknown && state.keep == null)
+ }
+ 
+-data class ReviewUi(val rows: List<ReviewRow>, val product: String = "", val saved: Boolean = false) {
++data class ReviewUi(
++    val rows: List<ReviewRow>, val product: String = "", val saved: Boolean = false,
++    val saving: Boolean = false, val error: String? = null,
++) {
+     val pendingCount: Int get() = rows.count { it.pending }
+-    val canSave: Boolean get() = pendingCount == 0 && rows.any { it.state is RowState.Accepted || (it.state as? RowState.Unknown)?.keep == true }
++    val canSave: Boolean get() = !saving && !saved && pendingCount == 0 && rows.any { it.state is RowState.Accepted || (it.state as? RowState.Unknown)?.keep == true }
+ }
+ 
+ /** Holds the disambiguation state required by R3 (M1 ReviewViewModel). */
+-class ReviewViewModel(private val c: AppContainer) : ViewModel() {
++class ReviewViewModel internal constructor(
++    initialItems: List<RecognisedItem>,
++    private val persistProduct: suspend (List<ShelfDraft>, String?) -> Unit,
++    private val findCandidates: (String) -> List<Candidate>,
++    private val didSave: (Int) -> Unit,
++    private val scopeOverride: CoroutineScope? = null,
++) : ViewModel() {
++    constructor(c: AppContainer) : this(
++        c.session.items,
++        { entries, product -> c.medicationRepository.addProduct(entries, product) },
++        { query -> c.services()?.lexicon?.search(query, limit = 6).orEmpty() },
++        { count ->
++            // Diagnostics must not turn a committed save into a retry that inserts it twice.
++            kotlin.runCatching {
++                c.session.readyAtElapsed?.let { ready ->
++                    com.airgaprx.app.platform.PerfLog.record(
++                        c.context, source = "review", reviewMs = android.os.SystemClock.elapsedRealtime() - ready,
++                        outcome = "$count accepted",
++                    )
++                }
++            }
++            c.session.readyAtElapsed = null
++            c.session.items = emptyList()
++        },
++    )
++
+     private val _ui = MutableStateFlow(
+-        ReviewUi(c.session.items.mapIndexed { i, item ->
++        ReviewUi(initialItems.mapIndexed { i, item ->
+             ReviewRow(i, item.mention, when (val r = item.resolution) {
+                 is Resolution.Resolved -> RowState.Accepted(r.candidate.ingredient, r.candidate.score)
+                 is Resolution.Ambiguous -> RowState.Choose(r.options)
+@@ -44,48 +76,58 @@ class ReviewViewModel(private val c: AppContainer) : ViewModel() {
+     )
+     val ui: StateFlow<ReviewUi> = _ui
+ 
+-    private fun set(id: Int, state: RowState) = _ui.update { u -> u.copy(rows = u.rows.map { if (it.id == id) it.copy(state = state) else it }) }
++    private val saveLock = Any()
++    private fun set(id: Int, state: RowState) = _ui.update { u ->
++        if (u.saving || u.saved) u else u.copy(rows = u.rows.map { if (it.id == id) it.copy(state = state) else it })
++    }
+ 
+     fun choose(id: Int, candidate: Candidate) = set(id, RowState.Accepted(candidate.ingredient, candidate.score))
+     fun noneOfThese(id: Int) = set(id, RowState.Unknown())
+     fun keepUnchecked(id: Int) = set(id, RowState.Unknown(keep = true))
+     fun remove(id: Int) = set(id, RowState.Removed)
+-    fun setProduct(name: String) = _ui.update { it.copy(product = name) }
++    fun setProduct(name: String) = _ui.update { if (it.saving || it.saved) it else it.copy(product = name) }
+ 
+     fun search(query: String): List<Candidate> =
+-        if (query.trim().length < 2) emptyList() else c.services()?.lexicon?.search(query, limit = 6).orEmpty()
++        if (query.trim().length < 2) emptyList() else findCandidates(query)
+ 
+     /** User correction of an accepted row (e.g. a fuzzy match that picked the wrong ingredient). */
+     fun replace(id: Int, ingredient: Ingredient) = set(id, RowState.Accepted(ingredient, 1.0))
+ 
+     fun addManual(ingredient: Ingredient) = _ui.update { u ->
++        if (u.saving || u.saved) return@update u
+         val next = (u.rows.maxOfOrNull { it.id } ?: -1) + 1
+         u.copy(rows = u.rows + ReviewRow(next, Mention(ingredient.name, MentionSource.MANUAL), RowState.Accepted(ingredient, 1.0)))
+     }
+ 
+     fun save() {
+-        val u = _ui.value
+-        if (!u.canSave) return
+-        viewModelScope.launch {
+-            val product = u.product.trim().ifEmpty { null }
+-            val seen = HashSet<String>()
++        val u = synchronized(saveLock) {
++            val snapshot = _ui.value
++            if (!snapshot.canSave) return
++            _ui.value = snapshot.copy(saving = true, error = null)
++            snapshot
++        }
++        val seen = HashSet<String>()
++        val entries = buildList {
+             u.rows.forEach { row ->
+                 when (val s = row.state) {
+-                    is RowState.Accepted -> if (seen.add(s.ingredient.id)) c.medicationRepository.add(s.ingredient.id, s.ingredient.name, product)
+-                    is RowState.Unknown -> if (s.keep == true) c.medicationRepository.add(null, row.mention.text.replaceFirstChar { it.uppercase() }, product)
++                    is RowState.Accepted -> if (seen.add(s.ingredient.id)) add(ShelfDraft(s.ingredient.id, s.ingredient.name))
++                    is RowState.Unknown -> if (s.keep == true) add(ShelfDraft(null, row.mention.text.replaceFirstChar { it.uppercase() }))
+                     else -> Unit
+                 }
+             }
+-            c.session.readyAtElapsed?.let { ready ->
+-                // User review time is reported separately from system latency (criterion 8).
+-                com.airgaprx.app.platform.PerfLog.record(
+-                    c.context, source = "review", reviewMs = android.os.SystemClock.elapsedRealtime() - ready,
+-                    outcome = "${u.rows.count { it.state is RowState.Accepted }} accepted",
+-                )
++        }
++        (scopeOverride ?: viewModelScope).launch {
++            try {
++                persistProduct(entries, u.product.trim().ifEmpty { null })
++            } catch (e: CancellationException) {
++                _ui.update { it.copy(saving = false) }
++                throw e
++            } catch (e: Exception) {
++                _ui.update { it.copy(saving = false, error = "Could not save this product. Please try again.") }
++                return@launch
+             }
+-            c.session.readyAtElapsed = null
+-            c.session.items = emptyList()
+-            _ui.update { it.copy(saved = true) }
++            runCatching { didSave(u.rows.count { it.state is RowState.Accepted }) }
++            _ui.update { it.copy(saved = true, saving = false) }
+         }
+     }
+ }
+diff --git a/core/src/main/kotlin/com/airgaprx/core/kb/KbPackage.kt b/core/src/main/kotlin/com/airgaprx/core/kb/KbPackage.kt
+index 3f7ba8a..a16c817 100644
+--- a/core/src/main/kotlin/com/airgaprx/core/kb/KbPackage.kt
++++ b/core/src/main/kotlin/com/airgaprx/core/kb/KbPackage.kt
+@@ -3,6 +3,7 @@ package com.airgaprx.core.kb
+ import com.airgaprx.core.model.KbVersion
+ import java.io.ByteArrayInputStream
+ import java.io.File
++import java.io.IOException
+ import java.io.InputStream
+ import java.security.KeyFactory
+ import java.security.MessageDigest
+@@ -162,6 +163,13 @@ class KbInstaller(
+             }
+             previousDir.deleteRecursively()
+             return InstallResult.Installed(newVersion)
++        } catch (e: IOException) {
++            // Truncated ZIP entries, unreadable streams and verification reads are rejected
++            // before activation, just like invalid signatures or checksums.
++            return InstallResult.Rejected("Could not read the knowledge-base package; it may be truncated or corrupt")
++        } catch (e: IllegalArgumentException) {
++            // Properties.load rejects malformed escape sequences even in a signed manifest.
++            return InstallResult.Rejected("Package manifest is malformed")
+         } finally {
+             stagingDir.deleteRecursively()
+         }
+diff --git a/core/src/main/kotlin/com/airgaprx/core/normalise/Text.kt b/core/src/main/kotlin/com/airgaprx/core/normalise/Text.kt
+index 358f018..faf44f2 100644
+--- a/core/src/main/kotlin/com/airgaprx/core/normalise/Text.kt
++++ b/core/src/main/kotlin/com/airgaprx/core/normalise/Text.kt
+@@ -13,6 +13,10 @@ object Text {
+         "mg", "mcg", "ug", "g", "kg", "iu", "ml", "l", "x", "microgram", "micrograms", "milligram",
+         "milligrams", "gram", "grams", "unit", "units",
+     )
++    private val doseAmount = Regex(
++        "\\d+(?:[.,]\\d+)?\\s*(?:" + units.sortedByDescending { it.length }.joinToString("|") + ")\\b",
++        RegexOption.IGNORE_CASE,
++    )
+     private val fillerWords = setOf(
+         "tablet", "tablets", "tab", "tabs", "capsule", "capsules", "caps", "softgel", "softgels",
+         "each", "per", "contains", "equivalent", "to", "of", "as", "and", "with", "the", "a", "film",
+@@ -34,12 +38,15 @@ object Text {
+ 
+     fun isFiller(token: String): Boolean = token in fillerWords || token in units || number.matches(token)
+ 
++    /** Remove amounts before tokenising, including OCR-joined names and decimal strengths. */
++    internal fun withoutDoseAmounts(raw: String): String = doseAmount.replace(raw, " ")
++
+     /**
+      * Removes dose amounts and packaging words: "Calcium carbonate 1250 mg tablets" -> "calcium carbonate".
+      * A bare number is only treated as a dose when a unit follows it, so "omega 3" and "vitamin b 12" survive.
+      */
+     fun stripDoses(raw: String): String {
+-        val toks = tokens(raw)
++        val toks = tokens(withoutDoseAmounts(raw))
+         val out = ArrayList<String>(toks.size)
+         var i = 0
+         while (i < toks.size) {
+diff --git a/core/src/main/kotlin/com/airgaprx/core/reasoning/ExplanationGenerator.kt b/core/src/main/kotlin/com/airgaprx/core/reasoning/ExplanationGenerator.kt
+index 2663dd1..42bb0e0 100644
+--- a/core/src/main/kotlin/com/airgaprx/core/reasoning/ExplanationGenerator.kt
++++ b/core/src/main/kotlin/com/airgaprx/core/reasoning/ExplanationGenerator.kt
+@@ -17,6 +17,11 @@ data class Explanation(
+ class ExplanationGenerator {
+     fun explain(alert: Alert, kb: KbVersion): Explanation {
+         val severityWord = alert.severity.name.lowercase().replaceFirstChar { it.uppercase() }
++        // Explain the severity actually shown. Keep mechanism and management from one record,
++        // preferring complete details, then management; never substitute lower-severity advice.
++        val detail = alert.evidence.filter { it.severity == alert.severity }.maxByOrNull {
++            (if (!it.management.isNullOrBlank()) 2 else 0) + (if (!it.mechanism.isNullOrBlank()) 1 else 0)
++        }
+         return when (alert.type) {
+             AlertType.DUPLICATE_INGREDIENT -> Explanation(
+                 headline = "${alert.first.name} appears in more than one product",
+@@ -29,8 +34,8 @@ class ExplanationGenerator {
+             AlertType.INTERACTION -> Explanation(
+                 headline = "${alert.first.name} + ${alert.second.name}",
+                 summary = "$severityWord interaction recorded in the offline knowledge base.",
+-                mechanism = alert.evidence.firstNotNullOfOrNull { it.mechanism?.takeIf(String::isNotBlank) },
+-                management = alert.evidence.firstNotNullOfOrNull { it.management?.takeIf(String::isNotBlank) },
++                mechanism = detail?.mechanism?.takeIf(String::isNotBlank),
++                management = detail?.management?.takeIf(String::isNotBlank),
+                 provenance = alert.evidence.map { e ->
+                     buildString {
+                         append(e.source)
+diff --git a/core/src/main/kotlin/com/airgaprx/core/reasoning/InteractionEngine.kt b/core/src/main/kotlin/com/airgaprx/core/reasoning/InteractionEngine.kt
+index 3a695f6..ed8c0d0 100644
+--- a/core/src/main/kotlin/com/airgaprx/core/reasoning/InteractionEngine.kt
++++ b/core/src/main/kotlin/com/airgaprx/core/reasoning/InteractionEngine.kt
+@@ -27,9 +27,11 @@ class InteractionEngine(private val kb: KnowledgeBase) {
+             }
+         }
+         // Therapeutic duplication: the same ingredient from two different products (e.g. two
+-        // paracetamol-containing cold remedies) is a common, avoidable overdose route.
++        // paracetamol-containing cold remedies) is a common, avoidable overdose route. Product
++        // names are optional display labels, not identities; separate shelf rows remain separate
++        // entries even when the user gave them the same name.
+         entries.groupBy { it.ingredient.id }
+-            .filter { (_, group) -> group.mapTo(HashSet()) { it.productName ?: "entry-${it.entryId}" }.size > 1 }
++            .filter { (_, group) -> group.mapTo(HashSet()) { it.entryId }.size > 1 }
+             .forEach { (_, group) ->
+                 val ing = group.first().ingredient
+                 alerts += Alert(AlertType.DUPLICATE_INGREDIENT, ing, ing, Severity.MODERATE, emptyList())
+diff --git a/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt b/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt
+index a700094..1d4cfc2 100644
+--- a/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt
++++ b/core/src/main/kotlin/com/airgaprx/core/recognition/LexiconLabelParser.kt
+@@ -23,9 +23,10 @@ import com.airgaprx.core.normalise.Text
+  * Modes are not permanent. A later header switches mode again, and every new OCR text block
+  * starts back in ACTIVE, so an active panel that OCR reads *after* an excipient list or a warning
+  * is still parsed. The one exception is an unfinished warning sentence ("Do not take with"): OCR
+- * can split a warning before the medicine it names, so WARNING carries into the next block until
+- * the sentence ends. The design choice is to fail visibly: when in doubt, text is kept and shown
+- * on the Review screen rather than dropped.
++ * can split a warning before the medicine it names. A block starting with "or" or "and" also
++ * continues the warning, even after a sentence end. Otherwise the new block starts in ACTIVE.
++ * The design choice is to fail visibly: when in doubt, text is kept and shown on the Review screen
++ * rather than dropped.
+  */
+ class LexiconLabelParser(
+     private val lexicon: Lexicon,
+@@ -35,11 +36,13 @@ class LexiconLabelParser(
+     enum class Mode { ACTIVE, EXCIPIENT, WARNING, OTHER }
+ 
+     /** A piece of label text with its section mode. [inPanel] is true inside an active-ingredient panel. */
+-    data class Segment(val text: String, val mode: Mode, val inPanel: Boolean)
++    data class Segment(val text: String, val mode: Mode, val inPanel: Boolean, val declaredActive: Boolean = false)
+ 
+     override fun parse(ocr: OcrResult): List<Mention> {
+         val segs = segments(ocr)
+-        val active = segs.filter { it.mode == Mode.ACTIVE }.map { it.copy(text = removeExcipients(it.text)) }
++        val active = segs.filter { it.mode == Mode.ACTIVE }.map {
++            if (it.declaredActive) it else it.copy(text = removeExcipients(it.text))
++        }
+         val mentions = ArrayList<Mention>()
+         mentions += panelMentions(active.filter { it.inPanel })
+         mentions += spotMentions(active.map { it.text })
+@@ -56,6 +59,8 @@ class LexiconLabelParser(
+         val atLineStart: Boolean = false,
+         /** Common words ("contains", "ingredients") that only count as headers at the start of a line. */
+         val generic: Boolean = false,
++        /** "contains" may be the verb continuing a warning, not a section title. */
++        val warningVerb: Boolean = false,
+     )
+ 
+     /** Splits OCR lines into moded segments. Public for tests and for the evaluation report. */
+@@ -64,6 +69,7 @@ class LexiconLabelParser(
+         var block = Int.MIN_VALUE
+         var mode = Mode.ACTIVE
+         var inPanel = false
++        var declaredActive = false
+         var panelLines = 0
+         var previous = ""
+         for (line in ocr.lines) {
+@@ -73,26 +79,30 @@ class LexiconLabelParser(
+                 block = line.block
+                 // A new OCR block is a layout boundary: skipped modes end here, but an open
+                 // ingredient panel may continue into it, and so may a warning whose sentence is
+-                // unfinished ("Do not take with" / "warfarin").
+-                val unfinishedWarning = mode == Mode.WARNING && !SENTENCE_END.containsMatchIn(previous)
+-                if (mode != Mode.ACTIVE && !unfinishedWarning) { mode = Mode.ACTIVE; inPanel = false }
++                // unfinished ("Do not take with" / "warfarin") or explicitly continued
++                // ("Do not take with warfarin." / "Or aspirin.").
++                val continuingWarning = mode == Mode.WARNING &&
++                    (!SENTENCE_END.containsMatchIn(previous) || WARNING_CONTINUATION.containsMatchIn(text))
++                if (mode != Mode.ACTIVE && !continuingWarning) { mode = Mode.ACTIVE; inPanel = false; declaredActive = false }
+             }
+-            previous = text
+-            if (inPanel && ++panelLines > MAX_PANEL_LINES) inPanel = false
++            if (inPanel && ++panelLines > MAX_PANEL_LINES) { inPanel = false; declaredActive = false }
+ 
+             var cursor = 0
+             for (hit in headerHits(text)) {
+                 // A panel header inside running text is not a section title: "Do not take with a
+                 // product that contains warfarin" must stay in WARNING mode. Generic words only
+                 // open a panel at the start of a line; no panel header re-opens ACTIVE mid-warning.
++                if (hit.opensPanel && mode == Mode.WARNING && hit.warningVerb && !SENTENCE_END.containsMatchIn(previous)) continue
+                 if (hit.opensPanel && !hit.atLineStart && (hit.generic || mode == Mode.WARNING)) continue
+-                if (hit.start > cursor) out += Segment(text.substring(cursor, hit.start), mode, inPanel && mode == Mode.ACTIVE)
++                if (hit.start > cursor) out += Segment(text.substring(cursor, hit.start), mode, inPanel && mode == Mode.ACTIVE, declaredActive)
+                 mode = hit.mode
+                 inPanel = hit.opensPanel
++                declaredActive = hit.opensPanel && (!hit.generic || declaredActive)
+                 if (hit.opensPanel) panelLines = 0
+                 cursor = hit.end
+             }
+-            if (cursor < text.length) out += Segment(text.substring(cursor), mode, inPanel && mode == Mode.ACTIVE)
++            if (cursor < text.length) out += Segment(text.substring(cursor), mode, inPanel && mode == Mode.ACTIVE, declaredActive)
++            previous = text
+         }
+         return out.filter { it.text.isNotBlank() }
+     }
+@@ -102,7 +112,7 @@ class LexiconLabelParser(
+         val all = ArrayList<Hit>()
+         fun atStart(i: Int) = line.substring(0, i).none { it.isLetterOrDigit() }
+         PANEL_HEADERS.zip(PANEL_HEADER_PATTERNS).forEach { (h, p) ->
+-            p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.ACTIVE, true, atStart(it.range.first), h in GENERIC_PANEL_HEADERS) }
++            p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.ACTIVE, true, atStart(it.range.first), h in GENERIC_PANEL_HEADERS, h == "contains") }
+         }
+         EXCIPIENT_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.EXCIPIENT, false) } }
+         WARNING_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.WARNING, false) } }
+@@ -122,7 +132,7 @@ class LexiconLabelParser(
+     }
+ 
+     private fun panelMentions(panel: List<Segment>): List<Mention> =
+-        panel.flatMap { it.text.split(SEPARATORS) }
++        panel.flatMap { Text.withoutDoseAmounts(it.text).replace(STRENGTH_FIELD_LABEL, "$1").split(SEPARATORS) }
+             .map { Text.stripDoses(it) }
+             .filter { seg -> seg.length >= 3 && seg.any { it.isLetter() } && seg.split(' ').size <= 5 }
+             .map { Mention(it, MentionSource.INGREDIENT_SECTION) }
+@@ -131,7 +141,7 @@ class LexiconLabelParser(
+         val out = ArrayList<Mention>()
+         val maxN = lexicon.maxTermTokens
+         for (line in lines) {
+-            val toks = Text.tokens(line)
++            val toks = Text.tokens(Text.withoutDoseAmounts(line))
+             var i = 0
+             while (i < toks.size) {
+                 val maxHere = minOf(maxN, toks.size - i)
+@@ -159,6 +169,10 @@ class LexiconLabelParser(
+     companion object {
+         /** Safety valve for a panel header that OCR never closes; long panels (20+ lines) are rare. */
+         private const val MAX_PANEL_LINES = 30
++        /** Whole conjunctions, optionally preceded by a bullet or opening quote/bracket. */
++        private val WARNING_CONTINUATION = Regex("""^\s*(?:[•·*-]\s*)?["'“‘(]?\s*(?:or|and)\b""", RegexOption.IGNORE_CASE)
++        /** Remove the field label, retaining its value and any following unknown active. */
++        private val STRENGTH_FIELD_LABEL = Regex("""(^|[,;•·|])\s*strength\s*:""", RegexOption.IGNORE_CASE)
+         /** A line that ends a sentence, allowing closing brackets or quotes after the mark. */
+         private val SENTENCE_END = Regex("[.!?][)\\]\"'”’]*\\s*$")
+         private val SEPARATORS = Regex("[,;:•·|/()\\[\\]]|\\s+and\\s+(?=[a-z])|\\s+\\+\\s+", RegexOption.IGNORE_CASE)
+diff --git a/core/src/test/kotlin/com/airgaprx/core/KbPackageTest.kt b/core/src/test/kotlin/com/airgaprx/core/KbPackageTest.kt
+index 6a32bb7..1ec32b5 100644
+--- a/core/src/test/kotlin/com/airgaprx/core/KbPackageTest.kt
++++ b/core/src/test/kotlin/com/airgaprx/core/KbPackageTest.kt
+@@ -7,16 +7,20 @@ import com.airgaprx.core.kb.KbPackage
+ import com.airgaprx.core.kb.KbVerifier
+ import org.junit.Assert.assertEquals
+ import org.junit.Assert.assertTrue
++import org.junit.Assert.fail
+ import org.junit.Test
+ import java.io.ByteArrayInputStream
+ import java.io.ByteArrayOutputStream
+ import java.io.File
++import java.io.IOException
++import java.io.InputStream
+ import java.nio.file.Files
+ import java.security.KeyPair
+ import java.security.KeyPairGenerator
+ import java.security.MessageDigest
+ import java.security.Signature
+ import java.security.spec.ECGenParameterSpec
++import java.util.concurrent.CancellationException
+ import java.util.zip.ZipEntry
+ import java.util.zip.ZipOutputStream
+ 
+@@ -38,8 +42,9 @@ class KbPackageTest {
+         status: String = "release",
+         unreviewed: Int = 0,
+         ddi: String = "DDInter",
++        manifestOverride: ByteArray? = null,
+     ): ByteArray {
+-        val manifest = """
++        val manifest = manifestOverride ?: """
+             format_version=1
+             release_id=$release
+             compiled_at=$compiledAt
+@@ -83,6 +88,65 @@ class KbPackageTest {
+         assertEquals("2026.10", i.releaseId())
+     }
+ 
++    @Test fun truncatedZipIsRejectedAndPriorRetained() {
++        val i = installer()
++        i.install(ByteArrayInputStream(pkg("2026.10", "2026-10-01T00:00:00Z")))
++        val payload = ByteArray(4096).also { java.util.Random(1).nextBytes(it) }
++        val out = ByteArrayOutputStream()
++        ZipOutputStream(out).use { z ->
++            z.putNextEntry(ZipEntry(KbPackage.DB))
++            z.write(payload)
++            z.closeEntry()
++        }
++        val truncated = out.toByteArray().copyOf(out.size() / 2)
++
++        val result = i.install(ByteArrayInputStream(truncated))
++
++        assertTrue(result.toString(), result is InstallResult.Rejected)
++        assertEquals("2026.10", i.releaseId())
++        // A failed extraction must not poison the next attempt through stale staging files.
++        assertTrue(i.install(ByteArrayInputStream(pkg("2026.11", "2026-11-01T00:00:00Z"))) is InstallResult.Installed)
++    }
++
++    @Test fun inputReadFailureIsRejectedAndPriorRetained() {
++        val i = installer()
++        i.install(ByteArrayInputStream(pkg("2026.10", "2026-10-01T00:00:00Z")))
++        val broken = object : InputStream() {
++            override fun read(): Int = throw IOException("Selected file cannot be read")
++        }
++
++        val result = i.install(broken)
++
++        assertTrue(result.toString(), result is InstallResult.Rejected)
++        assertEquals("2026.10", i.releaseId())
++    }
++
++    @Test fun malformedSignedManifestIsRejectedAndPriorRetained() {
++        val i = installer()
++        i.install(ByteArrayInputStream(pkg("2026.10", "2026-10-01T00:00:00Z")))
++        val malformed = pkg("2026.11", "2026-11-01T00:00:00Z", manifestOverride = "bad=\\uZZZZ".toByteArray())
++
++        val result = i.install(ByteArrayInputStream(malformed))
++
++        assertTrue(result.toString(), result is InstallResult.Rejected)
++        assertEquals("2026.10", i.releaseId())
++    }
++
++    @Test fun cancellationIsNotTurnedIntoARejectedPackage() {
++        val i = installer()
++        i.install(ByteArrayInputStream(pkg("2026.10", "2026-10-01T00:00:00Z")))
++        val cancelled = object : InputStream() {
++            override fun read(): Int = throw CancellationException("Import cancelled")
++        }
++
++        try {
++            i.install(cancelled)
++            fail("Cancellation must propagate")
++        } catch (e: CancellationException) {
++            assertEquals("2026.10", i.releaseId())
++        }
++    }
++
+     @Test fun untrustedSignerIsRejected() {
+         val i = installer()
+         val r = i.install(ByteArrayInputStream(pkg("evil", "2027-01-01T00:00:00Z", signer = otherKeys)))
+diff --git a/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt b/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt
+index 2ed739c..eb759e2 100644
+--- a/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt
++++ b/core/src/test/kotlin/com/airgaprx/core/NormalisationTest.kt
+@@ -30,6 +30,17 @@ class TextTest {
+         assertEquals(1, Text.editDistance("warfarin", "wrafarin"))
+         assertEquals(0, Text.editDistance("x", "x"))
+     }
++
++    @Test fun joinedDosesAreStrippedWithoutChangingNumericNames() {
++        for (label in listOf("Warfarn5 mg", "Warfarn5mg", "Warfarn2.5 mg", "Warfarn2,5mg")) {
++            assertEquals(label, "warfarn", Text.stripDoses(label))
++        }
++        assertEquals("vitamin b12", Text.stripDoses("Vitamin B12 500mcg"))
++        assertEquals("omega 3 fish oil", Text.stripDoses("Omega-3 fish oil1000mg"))
++        assertEquals("coenzyme q10", Text.stripDoses("Coenzyme Q10"))
++        assertEquals("vitamin b 12", Text.stripDoses("Vitamin B 12"))
++        assertEquals("5 htp", Text.stripDoses("5-HTP100mg"))
++    }
+ }
+ 
+ class LexiconTest {
+@@ -91,6 +102,14 @@ class IngredientNormaliserTest {
+         assertEquals(Fixtures.warfarin, (r as Resolution.Ambiguous).options.first().ingredient)
+     }
+ 
++    @Test fun joinedDoseNearMissOffersTheSameCandidatesAsTheNameAlone() {
++        val expected = normaliser.normalise(m("warfarn")).resolution
++        assertTrue(expected is Resolution.Ambiguous)
++        for (label in listOf("warfarn5 mg", "warfarn5mg", "warfarn2.5 mg")) {
++            assertEquals(label, expected, normaliser.normalise(m(label)).resolution)
++        }
++    }
++
+     @Test fun unknownIngredientIsEscalated() {
+         assertEquals(Resolution.Unrecognised, normaliser.normalise(m("Ashwagandha")).resolution)
+     }
+diff --git a/core/src/test/kotlin/com/airgaprx/core/ReasoningTest.kt b/core/src/test/kotlin/com/airgaprx/core/ReasoningTest.kt
+index 005157f..edf5326 100644
+--- a/core/src/test/kotlin/com/airgaprx/core/ReasoningTest.kt
++++ b/core/src/test/kotlin/com/airgaprx/core/ReasoningTest.kt
+@@ -1,6 +1,8 @@
+ package com.airgaprx.core
+ 
+ import com.airgaprx.core.model.AlertType
++import com.airgaprx.core.model.Alert
++import com.airgaprx.core.model.Interaction
+ import com.airgaprx.core.model.Severity
+ import com.airgaprx.core.reasoning.ExplanationGenerator
+ import com.airgaprx.core.reasoning.InteractionEngine
+@@ -40,6 +42,22 @@ class ReasoningTest {
+         assertEquals(Fixtures.paracetamol, dup.single().first)
+     }
+ 
++    @Test fun duplicateIngredientIsDetectedWhenSeparateEntriesHaveTheSameProductName() {
++        val alerts = engine.evaluate(listOf(
++            ShelfEntry(101, Fixtures.paracetamol, "Cold medicine"),
++            ShelfEntry(102, Fixtures.paracetamol, "Cold medicine"),
++        ))
++        assertEquals(AlertType.DUPLICATE_INGREDIENT, alerts.single().type)
++    }
++
++    @Test fun repeatedEntryDoesNotBecomeADuplicateBecauseItsDisplayNameChanged() {
++        val alerts = engine.evaluate(listOf(
++            ShelfEntry(101, Fixtures.paracetamol, "Cold medicine"),
++            ShelfEntry(101, Fixtures.paracetamol, "Updated product name"),
++        ))
++        assertTrue(alerts.toString(), alerts.none { it.type == AlertType.DUPLICATE_INGREDIENT })
++    }
++
+     @Test fun noInteractionsIsAnExplicitEmptyResult() {
+         val alerts = engine.evaluate(listOf(ShelfEntry(1, Fixtures.simvastatin, null), ShelfEntry(2, Fixtures.magnesium, null)))
+         assertTrue(alerts.isEmpty())
+@@ -52,4 +70,40 @@ class ReasoningTest {
+         assertTrue(e.disclaimer.contains("not medical advice"))
+         assertFalse(e.mechanism.isNullOrBlank())
+     }
++
++    private fun evidence(severity: Severity, mechanism: String?, management: String?, source: String) =
++        Interaction(Fixtures.warfarin.id, Fixtures.aspirin.id, severity, mechanism, management, source, null)
++
++    private fun explain(records: List<Interaction>) = ExplanationGenerator().explain(
++        Alert(AlertType.INTERACTION, Fixtures.warfarin, Fixtures.aspirin, Severity.MAJOR, records), kb.version,
++    )
++
++    @Test fun explanationUsesTheRecordMatchingTheAlertsSeverity() {
++        val result = explain(listOf(
++            evidence(Severity.MINOR, "Minor mechanism", "Minor management", "MINOR-SOURCE"),
++            evidence(Severity.MAJOR, "Major mechanism", "Major management", "MAJOR-SOURCE"),
++        ))
++        assertEquals("Major mechanism", result.mechanism)
++        assertEquals("Major management", result.management)
++        assertTrue(result.provenance.any { it.startsWith("MINOR-SOURCE") })
++        assertTrue(result.provenance.any { it.startsWith("MAJOR-SOURCE") })
++    }
++
++    @Test fun explanationDoesNotMixFieldsFromDifferentRecords() {
++        val result = explain(listOf(
++            evidence(Severity.MAJOR, "First source mechanism", null, "FIRST"),
++            evidence(Severity.MAJOR, null, "Second source management", "SECOND"),
++        ))
++        assertEquals(null, result.mechanism)
++        assertEquals("Second source management", result.management)
++    }
++
++    @Test fun missingMajorDetailsDoNotFallBackToMinorAdvice() {
++        val result = explain(listOf(
++            evidence(Severity.MINOR, "Minor mechanism", "Minor management", "MINOR-SOURCE"),
++            evidence(Severity.MAJOR, " ", null, "MAJOR-SOURCE"),
++        ))
++        assertEquals(null, result.mechanism)
++        assertEquals(null, result.management)
++    }
+ }
+diff --git a/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt b/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt
+index 90205ae..330d5db 100644
+--- a/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt
++++ b/core/src/test/kotlin/com/airgaprx/core/RecognitionTest.kt
+@@ -98,6 +98,46 @@ class LabelParserTest {
+         assertFalse("warfarin is only mentioned in a split warning: $texts", texts.any { it.contains("warfarin") })
+     }
+ 
++    @Test fun containsAtStartOfWarningContinuationDoesNotOpenActivePanel() {
++        val label = OcrResult(listOf(
++            TextLine("Each tablet contains Paracetamol 500 mg", 0.95f, block = 0),
++            TextLine("Warnings: Do not take with a product that", 0.95f, block = 1),
++            TextLine("contains warfarin.", 0.95f, block = 2),
++        ))
++        val texts = parser.parse(label).map { it.text }
++        assertTrue(texts.toString(), texts.contains("paracetamol"))
++        assertFalse("a continued warning must not add warfarin: $texts", texts.any { it.contains("warfarin") })
++    }
++
++    @Test fun containsAfterFinishedWarningInTheSameBlockCanOpenPanel() {
++        val texts = parser.parse(ocr(
++            "Warnings: Do not take with warfarin.",
++            "Contains St John's wort 300 mg",
++        )).map { it.text }
++        assertTrue("a finished warning must not hide the following active: $texts", texts.any { it.contains("wort") })
++        assertFalse(texts.toString(), texts.any { it.contains("warfarin") })
++    }
++
++    @Test fun explicitlyDeclaredActivesAreNotRemovedByExcipientPhraseFilter() {
++        val texts = parser.parse(ocr(
++            "Active ingredients: Calcium hydrogen phosphate 500 mg, Paracetamol 500 mg",
++        )).map { it.text }
++        assertTrue("declared actives must reach review: $texts", texts.containsAll(listOf("calcium hydrogen phosphate", "paracetamol")))
++    }
++
++    @Test fun genericHeaderDoesNotEraseAnExplicitActivePanelDeclaration() {
++        for (block in listOf(0, 1)) {
++            val label = OcrResult(listOf(
++                TextLine("Active ingredients:", 0.95f, block = 0),
++                TextLine("Contains calcium hydrogen phosphate 500 mg", 0.95f, block = block),
++                TextLine("Other ingredients: magnesium stearate", 0.95f, block = block + 1),
++            ))
++            val texts = parser.parse(label).map { it.text }
++            assertTrue(texts.toString(), texts.contains("calcium hydrogen phosphate"))
++            assertFalse(texts.toString(), texts.any { it.contains("magnesium") })
++        }
++    }
++
+     @Test fun warningContinuesAcrossSeveralOcrBlocks() {
+         val label = OcrResult(listOf(
+             TextLine("Each tablet contains Paracetamol 500 mg", 0.95f, block = 0),
+@@ -109,6 +149,55 @@ class LabelParserTest {
+         assertEquals(listOf("paracetamol"), texts)
+     }
+ 
++    @Test fun warningContinuationAfterSentenceEndDoesNotAddMedicine() {
++        for (continuation in listOf("Or aspirin.", "And aspirin.", "\u2022 Or aspirin.")) {
++            val label = OcrResult(listOf(
++                TextLine("Each tablet contains Paracetamol 500 mg", 0.95f, block = 0),
++                TextLine("Warnings: Do not take with warfarin.", 0.95f, block = 1),
++                TextLine(continuation, 0.95f, block = 2),
++                TextLine("Hypericum perforatum (St John's Wort) 300 mg", 0.95f, block = 3),
++            ))
++            val texts = parser.parse(label).map { it.text }
++            assertFalse("warning continuation must not add aspirin: $texts", texts.any { it.contains("aspirin") })
++            assertFalse(texts.toString(), texts.any { it.contains("warfarin") })
++            assertTrue(texts.toString(), texts.contains("paracetamol"))
++            assertTrue("a later active must still reach review: $texts", texts.any { it.contains("wort") })
++        }
++    }
++
++    @Test fun strengthFieldDoesNotBecomeAnIngredient() {
++        val labels = listOf(
++            ocr("Each tablet contains:", "Warfarn", "Strength: 5 mg"),
++            ocr("Each tablet contains: Warfarn; Strength: 5 mg; Ashwagandha 300 mg"),
++        )
++        for (label in labels) {
++            val texts = parser.parse(label).map { it.text }
++            assertFalse("a field label is not an ingredient: $texts", texts.contains("strength"))
++            assertTrue("the misspelt active must reach review: $texts", texts.contains("warfarn"))
++        }
++        assertTrue(parser.parse(labels[1]).any { it.text.contains("ashwagandha") })
++    }
++
++    @Test fun strengthFieldKeepsUnknownValuesAndNamesWithoutAFieldColon() {
++        val texts = parser.parse(ocr(
++            "Active ingredients:",
++            "Strength: Ashwagandha 300 mg",
++            "Strength complex 200 mg",
++        )).map { it.text }
++        assertTrue(texts.toString(), texts.containsAll(listOf("ashwagandha", "strength complex")))
++        assertFalse(texts.toString(), texts.contains("strength"))
++    }
++
++    @Test fun conjunctionPrefixesDoNotHideActivesAfterFinishedWarning() {
++        for (active in listOf("Oral Eltroxin 100 microgram", "Andrographis. Each tablet contains Eltroxin 100 microgram")) {
++            val label = OcrResult(listOf(
++                TextLine("Warnings: Do not take with warfarin.", 0.95f, block = 0),
++                TextLine(active, 0.95f, block = 1),
++            ))
++            assertTrue(active, parser.parse(label).any { it.text.contains("eltroxin") })
++        }
++    }
++
+     @Test fun headerAtLineStartInNewBlockAfterWarningStartsNewPanel() {
+         val label = OcrResult(listOf(
+             TextLine("Warnings: Do not take with", 0.95f, block = 0),
+@@ -197,6 +286,28 @@ class RecognitionPipelineTest {
+     private val lexicon = Lexicon(Fixtures.kb())
+     private val pipeline = RecognitionPipeline(LexiconLabelParser(lexicon), IngredientNormaliser(lexicon))
+ 
++    @Test fun joinedDoseAndStrengthFieldReachReviewAsOneAmbiguousIngredient() {
++        for (active in listOf("Warfarn5 mg", "Warfarn5mg", "Warfarn2.5 mg", "Warfarn2,5mg")) {
++            val out = pipeline.process(OcrResult(listOf(
++                TextLine("Each tablet contains:", 0.95f),
++                TextLine(active, 0.95f),
++                TextLine("Strength: 5 mg", 0.95f),
++            )))
++            assertTrue(out.toString(), out is RecognitionOutcome.Recognised)
++            val item = (out as RecognitionOutcome.Recognised).items.single()
++            assertTrue(item.toString(), item.resolution is Resolution.Ambiguous)
++            assertEquals(Fixtures.warfarin, (item.resolution as Resolution.Ambiguous).options.first().ingredient)
++        }
++    }
++
++    @Test fun joinedDoseOnFrontOfPackStillReachesReview() {
++        val out = pipeline.process(OcrResult(listOf(TextLine("Warfarn5 mg tablets", 0.95f))))
++        assertTrue(out.toString(), out is RecognitionOutcome.Recognised)
++        val item = (out as RecognitionOutcome.Recognised).items.single()
++        assertTrue(item.toString(), item.resolution is Resolution.Ambiguous)
++        assertEquals(Fixtures.warfarin, (item.resolution as Resolution.Ambiguous).options.first().ingredient)
++    }
++
+     @Test fun lowConfidenceCaptureAsksForRetake() {
+         val out = pipeline.process(OcrResult(listOf(TextLine("Warfar1n 5mg tab1ets", 0.31f))))
+         assertTrue(out is RecognitionOutcome.NeedsRecapture)
+diff --git a/gradle.properties b/gradle.properties
+index a311f80..f43aa82 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -2,3 +2,5 @@ org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
+ android.useAndroidX=true
+ android.nonTransitiveRClass=true
+ kotlin.code.style=official
++# Keep the development installation and shelf when connected tests finish.
++android.injected.androidTest.leaveApksInstalledAfterRun=true

@@ -1,0 +1,133 @@
+HEAD=250d8454eb9928aeb62603245ae0953c1cd7cfcb
+STATE=regressions added; model import extracted with old behavior; ReviewUi saving field added without guard
+COMMAND=.\gradlew.bat :core:test :app:testDebugUnitTest --continue --offline --console=plain
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:compileKotlin UP-TO-DATE
+> Task :core:compileJava NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :core:processTestResources NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :core:compileTestKotlin
+> Task :core:compileTestJava NO-SOURCE
+> Task :core:testClasses UP-TO-DATE
+
+> Task :core:test
+
+KbPackageTest > truncatedZipIsRejectedAndPriorRetained FAILED
+    java.io.EOFException at KbPackageTest.kt:100
+
+KbPackageTest > inputReadFailureIsRejectedAndPriorRetained FAILED
+    java.io.IOException at KbPackageTest.kt:115
+
+LabelParserTest > explicitlyDeclaredActivesAreNotRemovedByExcipientPhraseFilter FAILED
+    java.lang.AssertionError at RecognitionTest.kt:116
+
+LabelParserTest > containsAtStartOfWarningContinuationDoesNotOpenActivePanel FAILED
+    java.lang.AssertionError at RecognitionTest.kt:109
+
+> Task :app:compileDebugKotlin
+w: file:///C:/Users/hosse/Desktop/AirGapRx/app/src/main/kotlin/com/airgaprx/app/ui/review/ReviewScreen.kt:152:45 'val Icons.Outlined.HelpCenter: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.HelpCenter.
+
+> Task :core:test FAILED
+
+ReasoningTest > repeatedEntryDoesNotBecomeADuplicateBecauseItsDisplayNameChanged FAILED
+    java.lang.AssertionError at ReasoningTest.kt:58
+
+ReasoningTest > explanationUsesTheRecordMatchingTheAlertsSeverity FAILED
+    org.junit.ComparisonFailure at ReasoningTest.kt:86
+
+ReasoningTest > duplicateIngredientIsDetectedWhenSeparateEntriesHaveTheSameProductName FAILED
+    java.util.NoSuchElementException at ReasoningTest.kt:50
+
+ReasoningTest > explanationDoesNotMixFieldsFromDifferentRecords FAILED
+    java.lang.AssertionError at ReasoningTest.kt:97
+
+ReasoningTest > missingMajorDetailsDoNotFallBackToMinorAdvice FAILED
+    java.lang.AssertionError at ReasoningTest.kt:106
+
+65 tests completed, 9 failed
+
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest
+
+ModelImporterTest > providerExceptionIsRejectedWithoutDeletingTheWorkingModel FAILED
+    java.io.IOException at ModelImporterTest.kt:29
+
+ModelImporterTest > successfulReplacementKeepsPreviousUntilTheEntireStreamIsRead FAILED
+    java.lang.AssertionError at ModelImporterTest.kt:72
+
+ModelImporterTest > unsafeDisplayNameCannotWriteOutsideTheModelDirectory FAILED
+    java.lang.AssertionError at ModelImporterTest.kt:61
+
+ModelImporterTest > interruptedCopyRetainsSameNamedModelAndLeavesNoSelectablePartialFile FAILED
+    java.io.IOException at ModelImporterTest.kt:37
+
+ModelImporterTest > emptySelectionIsRejectedAndRetainsTheWorkingModel FAILED
+    java.lang.AssertionError at ModelImporterTest.kt:52
+
+ModelImporterTest > unreadableSelectionRetainsTheWorkingModel FAILED
+    java.lang.AssertionError at ModelImporterTest.kt:22
+
+ReviewSaveTest > productCannotBeSavedAgainWhileSaving FAILED
+    java.lang.AssertionError at ReviewSaveTest.kt:17
+
+ReviewSaveTest > completedProductCannotBeSavedAgain FAILED
+    java.lang.AssertionError at ReviewSaveTest.kt:21
+
+12 tests completed, 8 failed
+
+> Task :app:testDebugUnitTest FAILED
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':core:test'.
+> There were failing tests. See the report at: file:///C:/Users/hosse/Desktop/AirGapRx/core/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///C:/Users/hosse/Desktop/AirGapRx/app/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+==============================================================================
+
+BUILD FAILED in 41s
+28 actionable tasks: 8 executed, 20 up-to-date
+EXIT=1

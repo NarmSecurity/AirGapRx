@@ -8,8 +8,11 @@ import androidx.lifecycle.viewModelScope
 import com.airgaprx.app.AppContainer
 import com.airgaprx.app.data.KbState
 import com.airgaprx.app.platform.MediaPipeLlmParser
+import com.airgaprx.app.platform.ModelImporter
+import com.airgaprx.app.platform.ModelImportResult
 import com.airgaprx.core.kb.InstallResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -37,18 +40,26 @@ class AboutViewModel(private val c: AppContainer) : ViewModel() {
 
     /** Copies a MediaPipe .task model into app-private storage. */
     fun importModel(context: Context, uri: Uri) = viewModelScope.launch {
-        _message.value = withContext(Dispatchers.IO) {
-            val name = displayName(context, uri) ?: "model.task"
-            if (!name.endsWith(".task")) return@withContext "Choose a MediaPipe .task model file"
-            val dir = MediaPipeLlmParser.modelDir(context)
-            dir.listFiles()?.forEach { it.delete() }
-            val dest = File(dir, name)
-            context.contentResolver.openInputStream(uri)?.use { input -> dest.outputStream().use { input.copyTo(it) } }
-                ?: return@withContext "Could not read the selected file"
-            "Imported $name (${dest.length() / (1024 * 1024)} MB)"
+        val result = try {
+            withContext(Dispatchers.IO) {
+                val name = displayName(context, uri) ?: "model.task"
+                ModelImporter(MediaPipeLlmParser.modelDir(context)).import(name) {
+                    context.contentResolver.openInputStream(uri)
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            ModelImportResult.Rejected("Could not read the selected file. The previous model is unchanged.")
         }
-        c.onModelChanged()
-        _model.value = c.modelFile()
+        _message.value = when (result) {
+            is ModelImportResult.Imported -> "Imported ${result.file.name} (${result.file.length() / (1024 * 1024)} MB)"
+            is ModelImportResult.Rejected -> result.reason
+        }
+        if (result is ModelImportResult.Imported) {
+            c.onModelChanged()
+            _model.value = c.modelFile()
+        }
     }
 
     fun removeModel(context: Context) {

@@ -18,6 +18,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 
 sealed interface KbState {
     data object Loading : KbState
@@ -72,8 +73,13 @@ class KnowledgeBaseRepository(private val context: Context) {
     /** Installs an offline update package. The previous knowledge base stays live if anything fails. */
     suspend fun installFromUri(uri: Uri): InstallResult = withContext(Dispatchers.IO) {
         val result = mutex.withLock {
-            val input = context.contentResolver.openInputStream(uri)
-                ?: return@withLock InstallResult.Rejected("Could not open the selected file")
+            val input = try {
+                context.contentResolver.openInputStream(uri)
+            } catch (e: IOException) {
+                return@withLock InstallResult.Rejected("Could not read the selected file")
+            } catch (e: SecurityException) {
+                return@withLock InstallResult.Rejected("Access to the selected file was denied")
+            } ?: return@withLock InstallResult.Rejected("Could not open the selected file")
             input.use { installer.install(it) }
         }
         if (result is InstallResult.Installed) load()

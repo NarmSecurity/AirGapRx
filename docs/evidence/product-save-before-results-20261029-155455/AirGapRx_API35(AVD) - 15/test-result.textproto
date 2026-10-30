@@ -1,0 +1,125 @@
+# 2026-10-29T02:56:52.343440800Z:
+test_suite_meta_data {
+  scheduled_test_case_count: 2
+}
+test_status: FAILED
+test_result {
+  test_case {
+    test_class: "MedicationRepositoryTest"
+    test_package: "com.airgaprx.app.data"
+    test_method: "successfulProductPublishesEveryKnownAndUncheckedIngredient"
+    start_time {
+      seconds: 1793242607
+      nanos: 436000000
+    }
+    end_time {
+      seconds: 1793242609
+      nanos: 114000000
+    }
+  }
+  test_status: PASSED
+  output_artifact {
+    label {
+      label: "logcat"
+      namespace: "android"
+    }
+    source_path {
+      path: "C:\\Users\\hosse\\Desktop\\AirGapRx\\app\\build\\outputs\\androidTest-results\\connected\\debug\\AirGapRx_API35(AVD) - 15\\logcat-com.airgaprx.app.data.MedicationRepositoryTest-successfulProductPublishesEveryKnownAndUncheckedIngredient.txt"
+    }
+  }
+  output_artifact {
+    label {
+      label: "device-info"
+      namespace: "android"
+    }
+    source_path {
+      path: "C:\\Users\\hosse\\Desktop\\AirGapRx\\app\\build\\outputs\\androidTest-results\\connected\\debug\\AirGapRx_API35(AVD) - 15\\device-info.pb"
+    }
+  }
+  output_artifact {
+    label {
+      label: "device-info.meminfo"
+      namespace: "android"
+    }
+    source_path {
+      path: "C:\\Users\\hosse\\Desktop\\AirGapRx\\app\\build\\outputs\\androidTest-results\\connected\\debug\\AirGapRx_API35(AVD) - 15\\meminfo"
+    }
+  }
+  output_artifact {
+    label {
+      label: "device-info.cpuinfo"
+      namespace: "android"
+    }
+    source_path {
+      path: "C:\\Users\\hosse\\Desktop\\AirGapRx\\app\\build\\outputs\\androidTest-results\\connected\\debug\\AirGapRx_API35(AVD) - 15\\cpuinfo"
+    }
+  }
+}
+test_result {
+  test_case {
+    test_class: "MedicationRepositoryTest"
+    test_package: "com.airgaprx.app.data"
+    test_method: "failedSecondIngredientRollsBackTheWholeProduct"
+    start_time {
+      seconds: 1793242609
+      nanos: 165000000
+    }
+    end_time {
+      seconds: 1793242609
+      nanos: 886000000
+    }
+  }
+  test_status: FAILED
+  error {
+    error_message: "java.lang.AssertionError: a failed batch must leave the existing shelf intact expected:<[Existing medicine]> but was:<[First ingredient, Existing medicine]>\nat org.junit.Assert.fail(Assert.java:89)\nat org.junit.Assert.failNotEquals(Assert.java:835)\nat org.junit.Assert.assertEquals(Assert.java:120)\nat com.airgaprx.app.data.MedicationRepositoryTest$failedSecondIngredientRollsBackTheWholeProduct$1.invokeSuspend(MedicationRepositoryTest.kt:64)\nat kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)\nat kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)\nat kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)\nat kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)\nat kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)\nat kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)\nat kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)\nat kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)\nat com.airgaprx.app.data.MedicationRepositoryTest.failedSecondIngredientRollsBackTheWholeProduct(MedicationRepositoryTest.kt:49)\n"
+    error_type: "java.lang.AssertionError"
+    stack_trace: "java.lang.AssertionError: a failed batch must leave the existing shelf intact expected:<[Existing medicine]> but was:<[First ingredient, Existing medicine]>\nat org.junit.Assert.fail(Assert.java:89)\nat org.junit.Assert.failNotEquals(Assert.java:835)\nat org.junit.Assert.assertEquals(Assert.java:120)\nat com.airgaprx.app.data.MedicationRepositoryTest$failedSecondIngredientRollsBackTheWholeProduct$1.invokeSuspend(MedicationRepositoryTest.kt:64)\nat kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)\nat kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)\nat kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)\nat kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)\nat kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)\nat kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)\nat kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)\nat kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)\nat com.airgaprx.app.data.MedicationRepositoryTest.failedSecondIngredientRollsBackTheWholeProduct(MedicationRepositoryTest.kt:49)\n"
+  }
+  output_artifact {
+    label {
+      label: "logcat"
+      namespace: "android"
+    }
+    source_path {
+      path: "C:\\Users\\hosse\\Desktop\\AirGapRx\\app\\build\\outputs\\androidTest-results\\connected\\debug\\AirGapRx_API35(AVD) - 15\\logcat-com.airgaprx.app.data.MedicationRepositoryTest-failedSecondIngredientRollsBackTheWholeProduct.txt"
+    }
+  }
+  output_artifact {
+    label {
+      label: "device-info"
+      namespace: "android"
+    }
+    source_path {
+      path: "C:\\Users\\hosse\\Desktop\\AirGapRx\\app\\build\\outputs\\androidTest-results\\connected\\debug\\AirGapRx_API35(AVD) - 15\\device-info.pb"
+    }
+  }
+  output_artifact {
+    label {
+      label: "device-info.meminfo"
+      namespace: "android"
+    }
+    source_path {
+      path: "C:\\Users\\hosse\\Desktop\\AirGapRx\\app\\build\\outputs\\androidTest-results\\connected\\debug\\AirGapRx_API35(AVD) - 15\\meminfo"
+    }
+  }
+  output_artifact {
+    label {
+      label: "device-info.cpuinfo"
+      namespace: "android"
+    }
+    source_path {
+      path: "C:\\Users\\hosse\\Desktop\\AirGapRx\\app\\build\\outputs\\androidTest-results\\connected\\debug\\AirGapRx_API35(AVD) - 15\\cpuinfo"
+    }
+  }
+}
+output_artifact {
+  label {
+    label: "test-results.log"
+    namespace: "com.google.testing.platform.runtime.android.driver.AndroidInstrumentationDriver"
+  }
+  source_path {
+    path: "C:\\Users\\hosse\\Desktop\\AirGapRx\\app\\build\\outputs\\androidTest-results\\connected\\debug\\AirGapRx_API35(AVD) - 15\\testlog\\test-results.log"
+  }
+  type: TEST_DATA
+  mime_type: "text/plain"
+}

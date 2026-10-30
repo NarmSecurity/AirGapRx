@@ -7,16 +7,20 @@ import com.airgaprx.core.kb.KbPackage
 import com.airgaprx.core.kb.KbVerifier
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
+import java.io.InputStream
 import java.nio.file.Files
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
+import java.util.concurrent.CancellationException
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -38,8 +42,9 @@ class KbPackageTest {
         status: String = "release",
         unreviewed: Int = 0,
         ddi: String = "DDInter",
+        manifestOverride: ByteArray? = null,
     ): ByteArray {
-        val manifest = """
+        val manifest = manifestOverride ?: """
             format_version=1
             release_id=$release
             compiled_at=$compiledAt
@@ -81,6 +86,65 @@ class KbPackageTest {
         assertTrue(r is InstallResult.Rejected)
         assertTrue((r as InstallResult.Rejected).reason.contains("checksum"))
         assertEquals("2026.10", i.releaseId())
+    }
+
+    @Test fun truncatedZipIsRejectedAndPriorRetained() {
+        val i = installer()
+        i.install(ByteArrayInputStream(pkg("2026.10", "2026-10-01T00:00:00Z")))
+        val payload = ByteArray(4096).also { java.util.Random(1).nextBytes(it) }
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { z ->
+            z.putNextEntry(ZipEntry(KbPackage.DB))
+            z.write(payload)
+            z.closeEntry()
+        }
+        val truncated = out.toByteArray().copyOf(out.size() / 2)
+
+        val result = i.install(ByteArrayInputStream(truncated))
+
+        assertTrue(result.toString(), result is InstallResult.Rejected)
+        assertEquals("2026.10", i.releaseId())
+        // A failed extraction must not poison the next attempt through stale staging files.
+        assertTrue(i.install(ByteArrayInputStream(pkg("2026.11", "2026-11-01T00:00:00Z"))) is InstallResult.Installed)
+    }
+
+    @Test fun inputReadFailureIsRejectedAndPriorRetained() {
+        val i = installer()
+        i.install(ByteArrayInputStream(pkg("2026.10", "2026-10-01T00:00:00Z")))
+        val broken = object : InputStream() {
+            override fun read(): Int = throw IOException("Selected file cannot be read")
+        }
+
+        val result = i.install(broken)
+
+        assertTrue(result.toString(), result is InstallResult.Rejected)
+        assertEquals("2026.10", i.releaseId())
+    }
+
+    @Test fun malformedSignedManifestIsRejectedAndPriorRetained() {
+        val i = installer()
+        i.install(ByteArrayInputStream(pkg("2026.10", "2026-10-01T00:00:00Z")))
+        val malformed = pkg("2026.11", "2026-11-01T00:00:00Z", manifestOverride = "bad=\\uZZZZ".toByteArray())
+
+        val result = i.install(ByteArrayInputStream(malformed))
+
+        assertTrue(result.toString(), result is InstallResult.Rejected)
+        assertEquals("2026.10", i.releaseId())
+    }
+
+    @Test fun cancellationIsNotTurnedIntoARejectedPackage() {
+        val i = installer()
+        i.install(ByteArrayInputStream(pkg("2026.10", "2026-10-01T00:00:00Z")))
+        val cancelled = object : InputStream() {
+            override fun read(): Int = throw CancellationException("Import cancelled")
+        }
+
+        try {
+            i.install(cancelled)
+            fail("Cancellation must propagate")
+        } catch (e: CancellationException) {
+            assertEquals("2026.10", i.releaseId())
+        }
     }
 
     @Test fun untrustedSignerIsRejected() {
