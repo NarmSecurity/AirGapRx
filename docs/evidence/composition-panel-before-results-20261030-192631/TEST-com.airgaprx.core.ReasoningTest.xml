@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.airgaprx.core.ReasoningTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-30T06:26:44" hostname="MOFRADPC" time="0.03">
+  <properties/>
+  <testcase name="explanationCarriesProvenanceAndDisclaimer" classname="com.airgaprx.core.ReasoningTest" time="0.022"/>
+  <testcase name="repeatedEntryDoesNotBecomeADuplicateBecauseItsDisplayNameChanged" classname="com.airgaprx.core.ReasoningTest" time="0.001"/>
+  <testcase name="explanationUsesTheRecordMatchingTheAlertsSeverity" classname="com.airgaprx.core.ReasoningTest" time="0.001"/>
+  <testcase name="noInteractionsIsAnExplicitEmptyResult" classname="com.airgaprx.core.ReasoningTest" time="0.0"/>
+  <testcase name="ranksBySeverityAndMarksOnlyMajorInterruptive" classname="com.airgaprx.core.ReasoningTest" time="0.003"/>
+  <testcase name="detectsDuplicateIngredientAcrossProducts" classname="com.airgaprx.core.ReasoningTest" time="0.001"/>
+  <testcase name="duplicateIngredientIsDetectedWhenSeparateEntriesHaveTheSameProductName" classname="com.airgaprx.core.ReasoningTest" time="0.001"/>
+  <testcase name="explanationDoesNotMixFieldsFromDifferentRecords" classname="com.airgaprx.core.ReasoningTest" time="0.0"/>
+  <testcase name="missingMajorDetailsDoNotFallBackToMinorAdvice" classname="com.airgaprx.core.ReasoningTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

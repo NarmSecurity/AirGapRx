@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.airgaprx.core.LabelParserTest" tests="28" skipped="0" failures="0" errors="0" timestamp="2026-10-30T06:27:18" hostname="MOFRADPC" time="0.555">
+  <properties/>
+  <testcase name="excipientInACompositionPanelContinuedInTheNextBlockDoesNotRaiseAMineral" classname="com.airgaprx.core.LabelParserTest" time="0.373"/>
+  <testcase name="containsInsideWarningDoesNotReopenActivePanel" classname="com.airgaprx.core.LabelParserTest" time="0.011"/>
+  <testcase name="hybridParserSurvivesModelFailure" classname="com.airgaprx.core.LabelParserTest" time="0.01"/>
+  <testcase name="toleratesOcrErrorInDrugName" classname="com.airgaprx.core.LabelParserTest" time="0.047"/>
+  <testcase name="warningContinuationAfterSentenceEndDoesNotAddMedicine" classname="com.airgaprx.core.LabelParserTest" time="0.013"/>
+  <testcase name="spotsBrandOnFrontOfPack" classname="com.airgaprx.core.LabelParserTest" time="0.004"/>
+  <testcase name="conjunctionPrefixesDoNotHideActivesAfterFinishedWarning" classname="com.airgaprx.core.LabelParserTest" time="0.008"/>
+  <testcase name="genericHeaderMidSentenceIsNotAPanel" classname="com.airgaprx.core.LabelParserTest" time="0.005"/>
+  <testcase name="warningSplitAcrossOcrBlocksDoesNotAddOtherMedicines" classname="com.airgaprx.core.LabelParserTest" time="0.004"/>
+  <testcase name="newOcrBlockEndsAnExcipientSection" classname="com.airgaprx.core.LabelParserTest" time="0.004"/>
+  <testcase name="headerAtLineStartAfterWarningStartsNewPanel" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="explicitlyDeclaredActivesAreNotRemovedByExcipientPhraseFilter" classname="com.airgaprx.core.LabelParserTest" time="0.004"/>
+  <testcase name="excipientInsideACompositionPanelDoesNotRaiseAMineral" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="strengthFieldDoesNotBecomeAnIngredient" classname="com.airgaprx.core.LabelParserTest" time="0.005"/>
+  <testcase name="strengthFieldKeepsUnknownValuesAndNamesWithoutAFieldColon" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="activesAfterExcipientSectionInSameBlockAreKept" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <testcase name="inlineExcipientPhraseIsIgnored" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <testcase name="multiLinePanelWithSeveralActivesUnknownsAndMisspellings" classname="com.airgaprx.core.LabelParserTest" time="0.009"/>
+  <testcase name="headerAtLineStartInNewBlockAfterWarningStartsNewPanel" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="warningTextDoesNotAddOtherMedicines" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="midLinePanelAfterFinishedWarningInNewBlockIsKept" classname="com.airgaprx.core.LabelParserTest" time="0.005"/>
+  <testcase name="containsAfterFinishedWarningInTheSameBlockCanOpenPanel" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="warningContinuesAcrossSeveralOcrBlocks" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="excipientsDoNotRaiseMineralMentions" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="findsKnownAndUnknownActives" classname="com.airgaprx.core.LabelParserTest" time="0.004"/>
+  <testcase name="activeAfterFinishedWarningInNewBlockIsKept" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="containsAtStartOfWarningContinuationDoesNotOpenActivePanel" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <testcase name="genericHeaderDoesNotEraseAnExplicitActivePanelDeclaration" classname="com.airgaprx.core.LabelParserTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

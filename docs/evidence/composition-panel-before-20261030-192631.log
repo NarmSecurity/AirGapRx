@@ -1,0 +1,35 @@
+# :core:test before the composition-panel fix, 2026-10-30T19:26:31+13:00, base 250d845 + the uncommitted 29 Oct changes + two new tests
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:processResources NO-SOURCE
+> Task :core:processTestResources NO-SOURCE
+> Task :core:compileKotlin
+> Task :core:compileJava NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar
+> Task :core:compileTestKotlin
+> Task :core:compileTestJava NO-SOURCE
+> Task :core:testClasses UP-TO-DATE
+
+> Task :core:test
+
+LabelParserTest > excipientInACompositionPanelContinuedInTheNextBlockDoesNotRaiseAMineral FAILED
+    java.lang.AssertionError at RecognitionTest.kt:145
+
+LabelParserTest > excipientInsideACompositionPanelDoesNotRaiseAMineral FAILED
+    java.lang.AssertionError at RecognitionTest.kt:135
+
+71 tests completed, 2 failed
+
+> Task :core:test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':core:test'.
+> There were failing tests. See the report at: file:///C:/Users/hosse/Desktop/AirGapRx/core/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 13s
+4 actionable tasks: 4 executed

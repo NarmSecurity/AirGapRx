@@ -1,0 +1,11 @@
+# Emulator check of the composition-panel fix, 2026-10-30T19:30:38+13:00
+AVD=AirGapRx_API35 (Android 15, API 35; emulator, not a phone); uncommitted tree based on 250d845
+BUILD_APK_SHA256=59d2c1f7f3195830ec394c35df80152c600972b84a48f5ffc40ec51c2b292aa8
+INSTALLED=59d2c1f7f3195830ec394c35df80152c600972b84a48f5ffc40ec51c2b292aa8  /data/app/~~eXwNvfhruJjqgTxWGNUFMw==/com.airgaprx.app-CulllrsuitRQZtaYmh_URw==/base.apk
+LABEL_LOCAL=d86e0d31a5e79b7551db4852977cefffc402d698dd5f23d295b5a6266fdf19b0
+LABEL_DEVICE=d86e0d31a5e79b7551db4852977cefffc402d698dd5f23d295b5a6266fdf19b0  /sdcard/Pictures/test-label-composition.png
+TIMING:
+--------- beginning of main
+10-30 19:29:41.000  4290  4290 I AirGapRx.Timing: {ocr=3210, parse=33, normalise=2} total=3245ms
+10-30 19:29:41.007  4290  4290 I AirGapRx.Timing: 1793341781004,1793341733,gallery,Google sdk_gphone64_x86_64,15,2472,1,47514,,3210,33,2,,,Recognised,292532,per_operation
+CRASH_BUFFER:

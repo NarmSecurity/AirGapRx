@@ -125,6 +125,26 @@ class LabelParserTest {
         assertTrue("declared actives must reach review: $texts", texts.containsAll(listOf("calcium hydrogen phosphate", "paracetamol")))
     }
 
+    /**
+     * Review of the declared-active fix: "Each tablet contains" lists the whole composition, so
+     * fillers listed there without an "Other ingredients" header must still not raise a mineral.
+     */
+    @Test fun excipientInsideACompositionPanelDoesNotRaiseAMineral() {
+        val texts = parser.parse(ocr("Each tablet contains: Calcium carbonate 600 mg, magnesium stearate")).map { it.text }
+        assertTrue(texts.toString(), texts.contains("calcium carbonate"))
+        assertFalse("magnesium stearate is a filler, not magnesium: $texts", texts.any { it.contains("magnesium") })
+    }
+
+    @Test fun excipientInACompositionPanelContinuedInTheNextBlockDoesNotRaiseAMineral() {
+        val label = OcrResult(listOf(
+            TextLine("Each tablet contains: Calcium 600 mg", 0.95f, block = 0),
+            TextLine("magnesium stearate, silicon dioxide", 0.95f, block = 1),
+        ))
+        val texts = parser.parse(label).map { it.text }
+        assertTrue(texts.toString(), texts.contains("calcium"))
+        assertFalse("magnesium stearate is a filler, not magnesium: $texts", texts.any { it.contains("magnesium") })
+    }
+
     @Test fun genericHeaderDoesNotEraseAnExplicitActivePanelDeclaration() {
         for (block in listOf(0, 1)) {
             val label = OcrResult(listOf(

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.airgaprx.core.LabelParserTest" tests="28" skipped="0" failures="2" errors="0" timestamp="2026-10-30T06:26:44" hostname="MOFRADPC" time="0.14">
+  <properties/>
+  <testcase name="excipientInACompositionPanelContinuedInTheNextBlockDoesNotRaiseAMineral" classname="com.airgaprx.core.LabelParserTest" time="0.052">
+    <failure message="java.lang.AssertionError: magnesium stearate is a filler, not magnesium: [calcium, magnesium stearate, silicon dioxide, magnesium]" type="java.lang.AssertionError">java.lang.AssertionError: magnesium stearate is a filler, not magnesium: [calcium, magnesium stearate, silicon dioxide, magnesium]
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at org.junit.Assert.assertFalse(Assert.java:65)
+	at com.airgaprx.core.LabelParserTest.excipientInACompositionPanelContinuedInTheNextBlockDoesNotRaiseAMineral(RecognitionTest.kt:145)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at org.gradle.api.internal.tasks.testing.junit.JUnitTestClassExecutor.runTestClass(JUnitTestClassExecutor.java:112)
+	at org.gradle.api.internal.tasks.testing.junit.JUnitTestClassExecutor.execute(JUnitTestClassExecutor.java:58)
+	at org.gradle.api.internal.tasks.testing.junit.JUnitTestClassExecutor.execute(JUnitTestClassExecutor.java:40)
+	at org.gradle.api.internal.tasks.testing.junit.AbstractJUnitTestClassProcessor.processTestClass(AbstractJUnitTestClassProcessor.java:54)
+	at org.gradle.api.internal.tasks.testing.SuiteTestClassProcessor.processTestClass(SuiteTestClassProcessor.java:53)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:36)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:24)
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33)
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:92)
+	at jdk.proxy1/jdk.proxy1.$Proxy4.processTestClass(Unknown Source)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$2.run(TestWorker.java:183)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:132)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63)
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:121)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:71)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
+</failure>
+  </testcase>
+  <testcase name="containsInsideWarningDoesNotReopenActivePanel" classname="com.airgaprx.core.LabelParserTest" time="0.004"/>
+  <testcase name="hybridParserSurvivesModelFailure" classname="com.airgaprx.core.LabelParserTest" time="0.008"/>
+  <testcase name="toleratesOcrErrorInDrugName" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="warningContinuationAfterSentenceEndDoesNotAddMedicine" classname="com.airgaprx.core.LabelParserTest" time="0.007"/>
+  <testcase name="spotsBrandOnFrontOfPack" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <testcase name="conjunctionPrefixesDoNotHideActivesAfterFinishedWarning" classname="com.airgaprx.core.LabelParserTest" time="0.004"/>
+  <testcase name="genericHeaderMidSentenceIsNotAPanel" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="warningSplitAcrossOcrBlocksDoesNotAddOtherMedicines" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="newOcrBlockEndsAnExcipientSection" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <testcase name="headerAtLineStartAfterWarningStartsNewPanel" classname="com.airgaprx.core.LabelParserTest" time="0.001"/>
+  <testcase name="explicitlyDeclaredActivesAreNotRemovedByExcipientPhraseFilter" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <testcase name="excipientInsideACompositionPanelDoesNotRaiseAMineral" classname="com.airgaprx.core.LabelParserTest" time="0.003">
+    <failure message="java.lang.AssertionError: magnesium stearate is a filler, not magnesium: [calcium carbonate, magnesium stearate, magnesium]" type="java.lang.AssertionError">java.lang.AssertionError: magnesium stearate is a filler, not magnesium: [calcium carbonate, magnesium stearate, magnesium]
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at org.junit.Assert.assertFalse(Assert.java:65)
+	at com.airgaprx.core.LabelParserTest.excipientInsideACompositionPanelDoesNotRaiseAMineral(RecognitionTest.kt:135)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at org.gradle.api.internal.tasks.testing.junit.JUnitTestClassExecutor.runTestClass(JUnitTestClassExecutor.java:112)
+	at org.gradle.api.internal.tasks.testing.junit.JUnitTestClassExecutor.execute(JUnitTestClassExecutor.java:58)
+	at org.gradle.api.internal.tasks.testing.junit.JUnitTestClassExecutor.execute(JUnitTestClassExecutor.java:40)
+	at org.gradle.api.internal.tasks.testing.junit.AbstractJUnitTestClassProcessor.processTestClass(AbstractJUnitTestClassProcessor.java:54)
+	at org.gradle.api.internal.tasks.testing.SuiteTestClassProcessor.processTestClass(SuiteTestClassProcessor.java:53)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:36)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:24)
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33)
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:92)
+	at jdk.proxy1/jdk.proxy1.$Proxy4.processTestClass(Unknown Source)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$2.run(TestWorker.java:183)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:132)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63)
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:121)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:71)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
+</failure>
+  </testcase>
+  <testcase name="strengthFieldDoesNotBecomeAnIngredient" classname="com.airgaprx.core.LabelParserTest" time="0.004"/>
+  <testcase name="strengthFieldKeepsUnknownValuesAndNamesWithoutAFieldColon" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="activesAfterExcipientSectionInSameBlockAreKept" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <testcase name="inlineExcipientPhraseIsIgnored" classname="com.airgaprx.core.LabelParserTest" time="0.001"/>
+  <testcase name="multiLinePanelWithSeveralActivesUnknownsAndMisspellings" classname="com.airgaprx.core.LabelParserTest" time="0.005"/>
+  <testcase name="headerAtLineStartInNewBlockAfterWarningStartsNewPanel" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="warningTextDoesNotAddOtherMedicines" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <testcase name="midLinePanelAfterFinishedWarningInNewBlockIsKept" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <testcase name="containsAfterFinishedWarningInTheSameBlockCanOpenPanel" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="warningContinuesAcrossSeveralOcrBlocks" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="excipientsDoNotRaiseMineralMentions" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="findsKnownAndUnknownActives" classname="com.airgaprx.core.LabelParserTest" time="0.003"/>
+  <testcase name="activeAfterFinishedWarningInNewBlockIsKept" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <testcase name="containsAtStartOfWarningContinuationDoesNotOpenActivePanel" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <testcase name="genericHeaderDoesNotEraseAnExplicitActivePanelDeclaration" classname="com.airgaprx.core.LabelParserTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

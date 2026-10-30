@@ -84,6 +84,7 @@ evidence does not exist yet; it must not be presented as done.
 | A failed model replacement deleted the working model before reading the selected file | Code review and failing regressions | Copy to a nonselectable staging file, reject unsafe/empty/unreadable input, atomically publish, then retire the previous file; reset model services only on success | `ModelImporterTest.unreadableSelectionRetainsTheWorkingModel`, `providerExceptionIsRejectedWithoutDeletingTheWorkingModel`, `interruptedCopyRetainsSameNamedModelAndLeavesNoSelectablePartialFile` and publication guards |
 | The save refactor's delegating constructor resolved `runCatching` against an instance that was not yet initialised | Compilation during the review fixes (`product-save-before-20261029-155147.log`) | Qualify the top-level call as `kotlin.runCatching` | Subsequent app compilation and complete test run (`review-fixes-after-20261029-155826.log`) |
 | Connected-test cleanup uninstalled the development APK and removed its test shelf | Emulator verification after connected tests | Enable project-scoped `android.injected.androidTest.leaveApksInstalledAfterRun`; restore the three known development entries | Connected tests passed again (`product-save-preserve-20261029-160557.log`), and `shelf-preserved-after-tests.xml` records all three entries |
+| The declared-active fix turned the excipient filter off under every specific panel header, so "Each tablet contains: Calcium carbonate 600 mg, magnesium stearate" added magnesium again (the earlier false-mineral defect) | Review of the uncommitted 29 Oct changes; probe and failing regressions on 30 Oct | Only an "Active ingredients" heading turns the filter off; "Each … contains" panels list the whole composition and are filtered as before | `LabelParserTest.excipientInsideACompositionPanelDoesNotRaiseAMineral`, `excipientInACompositionPanelContinuedInTheNextBlockDoesNotRaiseAMineral` (both fail before, pass after); `explicitlyDeclaredActivesAreNotRemovedByExcipientPhraseFilter` still passes |
 
 For the first six defects, each named regression test was confirmed to fail on the code before its fix and pass after it. Method
 disclosure: these before-and-after runs used the Kotlin command-line compiler with a minimal substitute for
@@ -163,3 +164,16 @@ St John's wort. The crash buffer was empty and the shelf UI was unchanged. Scree
 input hashes, APK permissions and source provenance are in
 `docs/evidence/label-edge-emulator-20261029-143704/`. These focused checks leave held-out accuracy and
 phone behaviour unmeasured; the report and its figures were not edited.
+
+The composition-panel regression was found by reviewing the uncommitted 29 Oct changes. Before the fix,
+the two new tests failed with `[calcium carbonate, magnesium stearate, magnesium]` and
+`[calcium, magnesium stearate, silicon dioxide, magnesium]`
+(`docs/evidence/composition-panel-before-20261030-192631.log` and `composition-panel-before-results-20261030-192631/`).
+After it, 71 `:core` and 16 `:app` unit tests passed, the merged-manifest check and debug build passed
+(`docs/evidence/composition-panel-after-20261030-192703.log` and its two results folders), and the two
+SQLCipher repository tests passed on the emulator (`composition-panel-device-20261030-192756.log`). A full
+`connectedDebugAndroidTest` run also includes `OcrEvaluationTest`, which fails by design until evaluation
+photos are added. On the emulator, a synthetic label reading "Each tablet contains: Calcium carbonate 600 mg,
+magnesium stearate" gave Calcium only on Review (`docs/evidence/composition-panel-emulator-20261030/`).
+A block that begins with "And" or "Or" after a finished warning is still treated as part of the warning, so
+an active listed that way would be dropped rather than shown; this is a known limitation.

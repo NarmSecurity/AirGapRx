@@ -61,6 +61,8 @@ class LexiconLabelParser(
         val generic: Boolean = false,
         /** "contains" may be the verb continuing a warning, not a section title. */
         val warningVerb: Boolean = false,
+        /** "Active ingredients": the label declares what follows as actives, fillers included. */
+        val declaresActives: Boolean = false,
     )
 
     /** Splits OCR lines into moded segments. Public for tests and for the evaluation report. */
@@ -97,7 +99,9 @@ class LexiconLabelParser(
                 if (hit.start > cursor) out += Segment(text.substring(cursor, hit.start), mode, inPanel && mode == Mode.ACTIVE, declaredActive)
                 mode = hit.mode
                 inPanel = hit.opensPanel
-                declaredActive = hit.opensPanel && (!hit.generic || declaredActive)
+                // Only an "Active ingredients" heading turns the filler filter off. "Each tablet
+                // contains" lists the whole composition, so magnesium stearate there is a filler.
+                declaredActive = hit.opensPanel && (hit.declaresActives || declaredActive)
                 if (hit.opensPanel) panelLines = 0
                 cursor = hit.end
             }
@@ -112,7 +116,7 @@ class LexiconLabelParser(
         val all = ArrayList<Hit>()
         fun atStart(i: Int) = line.substring(0, i).none { it.isLetterOrDigit() }
         PANEL_HEADERS.zip(PANEL_HEADER_PATTERNS).forEach { (h, p) ->
-            p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.ACTIVE, true, atStart(it.range.first), h in GENERIC_PANEL_HEADERS, h == "contains") }
+            p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.ACTIVE, true, atStart(it.range.first), h in GENERIC_PANEL_HEADERS, h == "contains", h in ACTIVE_DECLARATION_HEADERS) }
         }
         EXCIPIENT_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.EXCIPIENT, false) } }
         WARNING_HEADER_PATTERNS.forEach { p -> p.findAll(line).forEach { all += Hit(it.range.first, it.range.last + 1, Mode.WARNING, false) } }
@@ -184,6 +188,8 @@ class LexiconLabelParser(
         )
         /** Panel headers that are also everyday words; honoured only at the start of a line. */
         val GENERIC_PANEL_HEADERS = setOf("contains", "ingredients", "composition")
+        /** Headers under which the excipient phrase filter is not applied. */
+        val ACTIVE_DECLARATION_HEADERS = setOf("active ingredients", "active ingredient")
         val EXCIPIENT_HEADERS = listOf(
             "inactive ingredients", "other ingredients", "excipients", "also contains", "non active ingredients",
             "nonactive ingredients", "non medicinal ingredients",

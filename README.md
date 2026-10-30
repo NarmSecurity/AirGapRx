@@ -145,7 +145,7 @@ never downloads anything itself.
 
 | Command | What it checks |
 |---|---|
-| `./gradlew :core:test` | 48 JVM unit test definitions (see *Verification status* below): text normalisation, fuzzy matching, parser (incl. excipient filtering), normaliser escalation, ranking, duplicate detection, section-aware parsing, KB signature, checksum, downgrade, tamper and review-status rejection |
+| `./gradlew :core:test` | 71 JVM unit test definitions (see *Verification status* below): text normalisation, fuzzy matching, parser (incl. excipient filtering), normaliser escalation, ranking, duplicate detection, section-aware parsing, KB signature, checksum, downgrade, tamper and review-status rejection |
 | `./gradlew :app:verifyNoNetworkPermissionRelease` | Fails if any network permission survives manifest merging (R1) |
 | `scripts/check_apk_permissions.sh <apk>` | Lists the APK's permissions with `aapt2` and fails on any network permission (R1) |
 | `python kb/build_kb.py && ./gradlew :core:evaluate` | Criteria 4 and 5: normalisation accuracy and detection recall against the compiled KB |
@@ -177,6 +177,10 @@ never downloads anything itself.
   SQLCipher tests on the Android 15 emulator pass
   ([combined log](docs/evidence/review-fixes-after-20261029-155826.log)). Connected tests now
   retain the development installation and shelf after cleanup via the project Gradle setting.
+  After the composition-panel fix on 30 Oct, 71 core tests and 16 app unit tests pass, and the 2
+  SQLCipher tests pass on the emulator ([log](docs/evidence/composition-panel-after-20261030-192703.log)).
+  A full `connectedDebugAndroidTest` run also includes `OcrEvaluationTest`, which fails until
+  evaluation photos are added.
 - **Android build: compiles.** The debug APK built on 24 Oct 2026 with JDK 21 and the Android SDK
   command-line tools ([log](docs/evidence/build-20261024-191001.log)). The merged-manifest check and the
   `aapt2` check both found no network permission; the APK declares only `CAMERA` and the app's own
