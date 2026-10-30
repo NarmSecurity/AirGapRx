@@ -1,8 +1,8 @@
 # Report figures from the emulator, 30 October 2026 (final build)
 
 **Emulator, not a phone.** Same AVD as `../emulator-20261024/` (Android 15, API 35, `google_apis` x86_64,
-Pixel 6 profile, no camera source). Light mode. Commit `4e26da5` on https://github.com/NarmSecurity/AirGapRx, with a clean code tree. When these were
-captured the same code was commit `f25b7e6` (`provenance.txt`); the 30 Oct history rewrite changed the ID, not
+Pixel 6 profile, no camera source). Light mode. Commit `744c2ad` on https://github.com/NarmSecurity/AirGapRx, with a clean code tree. When these were
+captured the same code was commit `f25b7e6` (`provenance.txt`); the 30 Oct history rewrites changed the ID, not
 the code. The installed APK's SHA-256 matched the build:
 `59D2C1F7F3195830EC394C35DF80152C600972B84A48F5FFC40EC51C2B292AA8` (`../app-debug-20261030-213115.sha256`).
 
